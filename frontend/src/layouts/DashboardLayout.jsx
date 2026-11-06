@@ -6,6 +6,7 @@ import { ToastProvider } from '../components/dashboard/ui.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { get } from '../api/client.js'
 import useApi from '../hooks/useApi.js'
+import { isDemo } from '../demo/session.js'
 
 // Shared shell for every role's dashboard: 248px light sidebar with icon nav on desktop,
 // slide-over drawer on mobile. `nav` is [{ to, label, icon, end? }].
@@ -103,6 +104,12 @@ export default function DashboardLayout({ nav, roleLabel, orgUrl }) {
             <Menu size={22} />
           </button>
         </header>
+        {isDemo() && (
+          <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 border-b border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-900">
+            <span>You are exploring a demo with sample data. Changes reset when you reload.</span>
+            <button type="button" onClick={handleSignOut} className="font-semibold underline underline-offset-2">Exit demo</button>
+          </div>
+        )}
         <main className="mx-auto w-full max-w-[1800px] px-4 py-8 sm:px-6 lg:px-12 lg:pt-12 lg:pb-12">
           <ToastProvider>
             <Outlet />

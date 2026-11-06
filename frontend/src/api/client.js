@@ -1,11 +1,18 @@
 import axios from 'axios'
+import { isDemo } from '../demo/session.js'
 
 // All requests go to /api on the same origin. In dev, Vite proxies /api and /uploads
 // to the backend (see vite.config.js), so the httpOnly auth cookies are first-party.
 // In production set VITE_API_URL if the API lives on another domain.
 const API_URL = import.meta.env.VITE_API_URL || '/api'
 
-const api = axios.create({ baseURL: API_URL, withCredentials: true })
+// Demo sessions are answered in the browser; the demo code is only downloaded when used
+const networkAdapter = axios.getAdapter(axios.defaults.adapter)
+const adapter = (config) => (isDemo()
+  ? import('../demo/adapter.js').then((m) => m.default(config))
+  : networkAdapter(config))
+
+const api = axios.create({ baseURL: API_URL, withCredentials: true, adapter })
 
 // Auth endpoints that must never trigger a refresh-and-retry loop
 const NO_REFRESH = ['/auth/google', '/auth/refresh', '/auth/logout']

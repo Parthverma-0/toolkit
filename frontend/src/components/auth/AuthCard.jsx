@@ -7,6 +7,7 @@ import { DEFAULT_ROLE, ROLES, isRole } from '../../constants/roles.js'
 import { useAuth } from '../../context/AuthContext.jsx'
 import { landingFor } from '../../constants/auth.js'
 import { errorMessage } from '../../api/client.js'
+import { DEMO_ENABLED, DEMO_ROLES, startDemo } from '../../demo/session.js'
 
 const COPY = {
   login: {
@@ -45,7 +46,14 @@ export default function AuthCard({ mode }) {
   }
 
   const navigate = useNavigate()
-  const { signIn } = useAuth()
+  const { signIn, refreshMe } = useAuth()
+
+  // Demo: no sign-in, sample data answered in the browser
+  const tryDemo = async () => {
+    startDemo(role)
+    const session = await refreshMe()
+    if (session?.user) navigate(landingFor(session), { replace: true })
+  }
 
   // Google ID token -> POST /api/auth/google with intent. Backend error codes become friendly notices.
   const handleCredential = async (credential) => {
@@ -94,6 +102,19 @@ export default function AuthCard({ mode }) {
           {copy.cta}
         </GoogleButton>
       </div>
+
+      {DEMO_ENABLED && DEMO_ROLES.includes(role) && (
+        <>
+          <button
+            type="button"
+            onClick={tryDemo}
+            className="mt-3 h-12 w-full rounded-xl border border-line bg-white text-base font-semibold text-ink transition hover:border-glow hover:text-brand"
+          >
+            Explore the {selected.label.toLowerCase()} demo
+          </button>
+          <p className="mt-1.5 text-center text-[11px] text-ink-soft">No sign-in needed. Sample data, nothing is saved.</p>
+        </>
+      )}
 
       {notice && (
         <p role="alert" className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-center text-xs text-red-700">
