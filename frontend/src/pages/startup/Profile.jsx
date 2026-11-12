@@ -75,10 +75,8 @@ function ProfileView({ startup, reload }) {
     const e = {}
     if (!f.fullName.trim()) e.fullName = 'Enter a name'
     if (!f.designation.trim()) e.designation = 'Enter a designation'
-    if (!f.isPrimary) {
-      if (!EMAIL_REGEX.test(f.email)) e.email = 'Enter a valid email'
-      if (!normalizePhone(f.phone)) e.phone = 'Enter a valid mobile number'
-    }
+    if (!f.isPrimary && !EMAIL_REGEX.test(f.email)) e.email = 'Enter a valid email'
+    if (!normalizePhone(f.phone)) e.phone = 'Enter a valid mobile number'
     const others = founders.filter((x) => x._id !== f._id).reduce((s, x) => s + (Number(x.equityPercent) || 0), 0)
     if (others + (Number(f.equityPercent) || 0) > 100) e.equityPercent = `Total equity would exceed 100% (others hold ${others}%)`
     setErrors(e)
@@ -88,7 +86,8 @@ function ProfileView({ startup, reload }) {
       fullName: f.fullName.trim(), designation: f.designation.trim(),
       linkedin: f.linkedin?.trim() || undefined, equityPercent: f.equityPercent === '' ? undefined : f.equityPercent,
     }
-    if (!f.isPrimary) Object.assign(body, { email: f.email.trim().toLowerCase(), phone: normalizePhone(f.phone) })
+    body.phone = normalizePhone(f.phone)
+    if (!f.isPrimary) body.email = f.email.trim().toLowerCase()
 
     if (f.isPrimary) run(() => put('/startups/me/founders/primary', toFormData(body)), 'Your founder profile was updated')
     else if (f._id) run(() => patch(`/startups/me/founders/${f._id}`, toFormData(body)), 'Founder updated')
@@ -150,9 +149,7 @@ function ProfileView({ startup, reload }) {
                 </div>
                 <div className="mt-3 flex flex-wrap gap-1.5">
                   {x.isPrimary && <Badge tone="brand">Primary</Badge>}
-                  <Badge tone={x.isEmailVerified ? 'success' : 'warning'}>{x.isEmailVerified ? 'Email verified' : 'Email not verified'}</Badge>
-                  <Badge tone={x.isPhoneVerified ? 'success' : 'warning'}>{x.isPhoneVerified ? 'Phone verified' : 'Phone not verified'}</Badge>
-                </div>
+                  <Badge tone={x.isEmailVerified ? 'success' : 'warning'}>{x.isEmailVerified ? 'Email verified' : 'Email not verified'}</Badge>                </div>
               </li>
             ))}
           </ul>
@@ -227,7 +224,7 @@ function ProfileView({ startup, reload }) {
 
       <Drawer
         open={Boolean(f)} title={f?.isPrimary ? 'Edit your founder profile' : f?._id ? 'Edit founder' : 'Add co-founder'} onClose={closeDrawers}
-        subtitle={f?.isPrimary ? 'Email and phone come from your verified account.' : undefined}
+        subtitle={f?.isPrimary ? 'Your email comes from your Google account.' : undefined}
         footer={(
           <>
             {saveError && <ErrorText>{saveError}</ErrorText>}
@@ -250,7 +247,7 @@ function ProfileView({ startup, reload }) {
                 error={errors.email} onChange={(e) => setFounderDraft({ ...f, email: e.target.value })} />
             </Field>
             <Field label="Mobile number" htmlFor="fphone" required error={errors.phone}>
-              <TextInput id="fphone" type="tel" value={f.phone} readOnly={f.isPrimary} className={f.isPrimary ? 'bg-sidebar' : ''}
+              <TextInput id="fphone" type="tel" value={f.phone}
                 error={errors.phone} onChange={(e) => setFounderDraft({ ...f, phone: e.target.value })} />
             </Field>
             <Field label="LinkedIn" htmlFor="fli" optional error={errors.linkedin}>

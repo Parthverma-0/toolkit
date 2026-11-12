@@ -23,18 +23,17 @@ const assertEquityWithinLimit = async (startupId, equityPercent, excludeFounderI
 const getOnboardingStatus = async (user, startup) => {
   const hasPrimaryFounder = startup ? Boolean(await Founder.exists({ startup: startup._id, isPrimary: true })) : false;
   return {
-    phoneVerified: user.isPhoneVerified,
     startupProfile: Boolean(startup),
     founderProfile: hasPrimaryFounder,
     isProfileComplete: Boolean(startup?.isProfileComplete),
   };
 };
 
-// Dashboard unlocks once: startup profile + primary founder profile + verified phone.
+// Dashboard unlocks once: startup profile + primary founder profile.
 // Call after any change that could affect completion.
 const refreshProfileCompletion = async (startup, user) => {
   const status = await getOnboardingStatus(user, startup);
-  const complete = status.phoneVerified && status.startupProfile && status.founderProfile;
+  const complete = status.startupProfile && status.founderProfile;
 
   if (complete !== startup.isProfileComplete) {
     startup.isProfileComplete = complete;

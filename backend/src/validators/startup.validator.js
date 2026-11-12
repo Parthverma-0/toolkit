@@ -60,10 +60,12 @@ const phoneField = (chain) => chain
   .custom((v) => Boolean(normalizePhone(v))).withMessage('Invalid phone number')
   .customSanitizer(normalizePhone);
 
-// Primary founder = the logged-in user; email & phone come from the verified account
+// Primary founder = the logged-in user; email comes from the account, phone is optional
+// here only because an earlier save may already have stored it (controller requires one overall)
 const upsertPrimaryFounder = [
   body('fullName').isString().withMessage('fullName is required').bail().trim().notEmpty().withMessage('fullName is required').isLength({ max: 100 }),
   body('designation').isString().withMessage('designation is required').bail().trim().notEmpty().withMessage('designation is required').isLength({ max: 60 }),
+  phoneField(body('phone').optional()),
   ...founderOptionalFields,
 ];
 

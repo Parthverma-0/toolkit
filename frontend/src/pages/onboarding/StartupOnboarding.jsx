@@ -11,14 +11,14 @@ import { errorMessage, fieldErrors, patch, post, put, toFormData } from '../../a
 
 const STEPS = [
   { title: 'Startup details', description: 'Legal identity and what you do' },
-  { title: 'Founder & contact', description: 'Verify your email and phone' },
+  { title: 'Founder & contact', description: 'Your name and contact details' },
   { title: 'Review', description: 'Check everything and submit' },
 ]
 
 const EMPTY = {
   logo: null, name: '', startupEmail: '', startupEmailVerified: false, cin: '', dpiitNumber: '', sector: '', stage: '',
   problemStatement: '', solution: '',
-  fullName: '', designation: '', email: '', emailVerified: false, phone: '', phoneVerified: false,
+  fullName: '', designation: '', email: '', emailVerified: false, phone: '',
 }
 
 const TEXT_MAX = 3000
@@ -41,8 +41,7 @@ function validateStep(step, f) {
   if (step === 1) {
     if (!f.fullName.trim()) e.fullName = 'Enter your full name'
     if (!f.designation.trim()) e.designation = 'Enter your designation'
-    e.phone = phoneError(f.phone) || (f.phoneVerified ? '' : 'Verify your phone to continue')
-    if (!e.phone) delete e.phone
+    if (phoneError(f.phone)) e.phone = phoneError(f.phone)
   }
   return e
 }
@@ -51,15 +50,14 @@ const labelOf = (list, id) => list.find((o) => o.id === id)?.label ?? '-'
 
 export default function StartupOnboarding() {
   const [step, setStep] = useState(0)
-  const { user, updateUser } = useAuth()
-  // Founder email is the Google account email (already verified); phone may be verified from an earlier attempt
+  const { user } = useAuth()
+  // Founder email is the Google account email (already verified); phone may be saved from an earlier attempt
   const [form, setForm] = useState(() => ({
     ...EMPTY,
     fullName: user?.name ?? '',
     email: user?.email ?? '',
     emailVerified: true,
     phone: user?.phone?.replace(/^\+91/, '') ?? '',
-    phoneVerified: Boolean(user?.isPhoneVerified),
   }))
   const [startupCreated, setStartupCreated] = useState(false)
   const [submitError, setSubmitError] = useState('')
@@ -113,14 +111,16 @@ export default function StartupOnboarding() {
         }
         setStartupCreated(true)
       }
-      await put('/startups/me/founders/primary', toFormData({ fullName: form.fullName.trim(), designation: form.designation.trim() }))
+      await put('/startups/me/founders/primary', toFormData({
+        fullName: form.fullName.trim(), designation: form.designation.trim(), phone: normalizePhone(form.phone),
+      }))
       setSubmitted(true)
     } catch (err) {
       const fe = fieldErrors(err)
       setSubmitError(errorMessage(err))
       if (Object.keys(fe).length) {
         setErrors(fe)
-        goTo(['fullName', 'designation'].some((k) => fe[k]) ? 1 : 0)
+        goTo(['fullName', 'designation', 'phone'].some((k) => fe[k]) ? 1 : 0)
       }
     } finally {
       setSubmitting(false)
@@ -222,13 +222,12 @@ export default function StartupOnboarding() {
                       <span className="inline-flex shrink-0 items-center rounded-lg bg-emerald-50 px-4 text-base font-semibold text-emerald-700">Verified</span>
                     </div>
                   </Field>
-                  <Field label="Mobile number" htmlFor="phone" required>
-                    <OtpField id="phone" channel="phone" type="tel" inputMode="numeric" prefix="+91" value={form.phone} placeholder="98765 43210"
-                      toTarget={(v) => normalizePhone(v)}
-                      onChange={(phone) => update({ phone, phoneVerified: false })}
-                      verified={form.phoneVerified}
-                      onVerified={(res) => { update({ phoneVerified: true }); if (res?.user) updateUser(res.user) }}
-                      validate={phoneError} error={errors.phone} />
+                  <Field label="Mobile number" htmlFor="phone" required error={errors.phone}>
+                    <div className="relative">
+                      <span className="pointer-events-none absolute inset-y-0 left-4 flex items-center text-base text-ink-soft">+91</span>
+                      <TextInput id="phone" type="tel" inputMode="numeric" autoComplete="tel-national" value={form.phone} placeholder="98765 43210"
+                        onChange={(e) => update({ phone: e.target.value })} error={errors.phone} className="pl-12!" />
+                    </div>
                   </Field>
                 </div>
               )}
@@ -253,7 +252,7 @@ export default function StartupOnboarding() {
                   <ReviewSection title="Founder & contact" onEdit={() => goTo(1)}>
                     <ReviewRow label="Name" value={`${form.fullName}, ${form.designation}`} />
                     <ReviewRow label="Email" value={form.email} verified />
-                    <ReviewRow label="Mobile" value={normalizePhone(form.phone)} verified />
+                    <ReviewRow label="Mobile" value={normalizePhone(form.phone)} />
                   </ReviewSection>
 
                   <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-line bg-white p-4 text-sm text-ink-soft">
