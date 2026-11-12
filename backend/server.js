@@ -1,4 +1,4 @@
-// Local / long-running entry point. On Vercel the app is served by /api/index.js instead.
+// Local / long-running entry point. On Vercel the app is served by ./index.js instead.
 require('dotenv').config();
 const config = require('./src/config');
 const app = require('./src/app');

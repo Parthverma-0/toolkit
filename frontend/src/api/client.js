@@ -2,7 +2,7 @@ import axios from 'axios'
 import { isDemo } from '../demo/session.js'
 
 // All requests go to /api on the same origin. In dev, Vite proxies /api and /uploads
-// to the backend (see vite.config.js); on Vercel the backend is the /api function of the same
+// to the backend (see vite.config.js); on Vercel the backend is a service of the same
 // deployment (see /vercel.json). Either way the httpOnly auth cookies are first-party.
 // In production set VITE_API_URL if the API lives on another domain.
 const API_URL = import.meta.env.VITE_API_URL || '/api'
