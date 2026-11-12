@@ -50,6 +50,26 @@ const uploadFile = async (filePath, { folder, mimetype }) => {
   return { url: body.secure_url, publicId: body.public_id, resourceType };
 };
 
+const DIRECT_FOLDERS = { image: 'images', video: 'videos', raw: 'documents' };
+const DIRECT_FORMATS = { image: 'jpg,png,webp', video: 'mp4,webm,mov' };
+
+// Signed parameters that let the browser upload ONE file straight to Cloudinary (the API
+// secret never leaves the server). We pick the public id, so the caller can later prove
+// which asset it was allowed to create. Returns { uploadUrl, fields, publicId }.
+const directUploadParams = (mimetype) => {
+  const { cloudName, apiKey, apiSecret, folder: root } = cfg();
+  const resourceType = resourceTypeFor(mimetype);
+  const id = `${Date.now()}-${crypto.randomBytes(8).toString('hex')}`;
+  const publicId = `${root}/${DIRECT_FOLDERS[resourceType]}/${id}${resourceType === 'raw' ? '.pdf' : ''}`;
+  const params = { public_id: publicId, timestamp: Math.floor(Date.now() / 1000) };
+  if (DIRECT_FORMATS[resourceType]) params.allowed_formats = DIRECT_FORMATS[resourceType];
+  return {
+    uploadUrl: `https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/upload`,
+    fields: { ...params, api_key: apiKey, signature: sign(params, apiSecret) },
+    publicId,
+  };
+};
+
 // https://res.cloudinary.com/<cloud>/<type>/upload/[transformations/]v123/<public_id>[.ext]
 const parseUrl = (url) => {
   const { cloudName } = cfg();
@@ -75,5 +95,5 @@ const destroy = async (url) => {
 };
 
 module.exports = {
-  uploadFile, destroy, isCloudinaryUrl, parseUrl, sign, resourceTypeFor,
+  uploadFile, directUploadParams, destroy, isCloudinaryUrl, parseUrl, sign, resourceTypeFor,
 };

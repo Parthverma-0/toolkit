@@ -3,8 +3,8 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { defineConfig, loadEnv } from 'vite'
 
-// The Google client ID is public. If VITE_GOOGLE_CLIENT_ID isn't set, reuse
-// GOOGLE_CLIENT_ID from backend/.env so it only has to be filled in once.
+// The Google client ID is public. If VITE_GOOGLE_CLIENT_ID isn't set, reuse GOOGLE_CLIENT_ID
+// (build environment on Vercel, backend/.env locally) so it only has to be filled in once.
 const backendGoogleClientId = () => {
   try {
     const line = fs.readFileSync(new URL('../backend/.env', import.meta.url), 'utf8')
@@ -26,7 +26,7 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react(), tailwindcss()],
     define: {
-      __GOOGLE_CLIENT_ID__: JSON.stringify(env.VITE_GOOGLE_CLIENT_ID || backendGoogleClientId()),
+      __GOOGLE_CLIENT_ID__: JSON.stringify(env.VITE_GOOGLE_CLIENT_ID || env.GOOGLE_CLIENT_ID || backendGoogleClientId()),
     },
     server: {
       port: 5173,

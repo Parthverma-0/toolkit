@@ -13,10 +13,13 @@ if (missing.length && process.env.NODE_ENV !== 'test') {
 
 const isProd = process.env.NODE_ENV === 'production';
 
+// On Vercel the frontend and the API share one domain, so CLIENT_URL is optional there
+const vercelUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL && `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
+
 module.exports = {
   isProd,
   port: process.env.PORT || 5000,
-  clientUrl: process.env.CLIENT_URL || 'http://localhost:5173',
+  clientUrl: process.env.CLIENT_URL || vercelUrl || 'http://localhost:5173',
   // Mentor availability slots (e.g. "mon 10:00-12:00") are interpreted in this zone
   timezone: process.env.APP_TIMEZONE || 'Asia/Kolkata',
   mongoUri: process.env.MONGO_URI,

@@ -2,7 +2,8 @@ import axios from 'axios'
 import { isDemo } from '../demo/session.js'
 
 // All requests go to /api on the same origin. In dev, Vite proxies /api and /uploads
-// to the backend (see vite.config.js), so the httpOnly auth cookies are first-party.
+// to the backend (see vite.config.js); on Vercel the backend is the /api function of the same
+// deployment (see /vercel.json). Either way the httpOnly auth cookies are first-party.
 // In production set VITE_API_URL if the API lives on another domain.
 const API_URL = import.meta.env.VITE_API_URL || '/api'
 
@@ -25,6 +26,53 @@ export const onSessionExpired = (fn) => {
   listeners.add(fn)
   return () => listeners.delete(fn)
 }
+
+// Direct uploads. When the backend stores files on Cloudinary (always the case on Vercel,
+// where request bodies are capped at 4.5 MB), each file goes straight from the browser to
+// Cloudinary and the form carries a signed reference to it in `directUploads` instead.
+// With local disk storage the backend answers direct:false and files travel with the form.
+let directUploads = true
+
+const uploadDirect = async (file) => {
+  if (!directUploads) return null
+  const { data: { data: ticket } } = await api.post('/uploads/sign', { mimetype: file.type })
+  if (!ticket.direct) {
+    directUploads = false
+    return null
+  }
+  const body = new FormData()
+  Object.entries(ticket.fields).forEach(([key, value]) => body.append(key, value))
+  body.append('file', file)
+  const res = await fetch(ticket.uploadUrl, { method: 'POST', body }).catch(() => null)
+  const json = await res?.json().catch(() => null)
+  if (!res?.ok || !json?.secure_url) {
+    // Same shape as an API error so errorMessage() can show it
+    throw Object.assign(new Error('Upload failed'), {
+      response: { data: { message: `Couldn't upload ${file.name}${json?.error?.message ? `: ${json.error.message}` : '. Please try again.'}` } },
+    })
+  }
+  return { url: json.secure_url, proof: ticket.proof, name: file.name, size: file.size }
+}
+
+api.interceptors.request.use(async (config) => {
+  if (isDemo() || config._direct || !(config.data instanceof FormData)) return config
+  const entries = [...config.data.entries()]
+  const refs = []
+  for (const [field, value] of entries) {
+    if (!(value instanceof File)) continue
+    const ref = await uploadDirect(value)
+    if (!ref) return config // backend keeps files itself: send the form untouched
+    refs.push({ field, ...ref })
+  }
+  if (!refs.length) return config
+
+  const body = new FormData()
+  entries.forEach(([key, value]) => { if (!(value instanceof File)) body.append(key, value) })
+  body.append('directUploads', JSON.stringify(refs))
+  config.data = body
+  config._direct = true // a 401 retry must not upload the files again
+  return config
+})
 
 api.interceptors.response.use(
   (res) => res,
