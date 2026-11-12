@@ -8,13 +8,11 @@
     },
     "frontend": {
       "root": "frontend",
-      "framework": "vite",
-      "rewrites": [
-        { "source": "/(.*)", "destination": "/index.html" }
-      ]
+      "framework": "vite"
     }
   },
   "rewrites": [
+    { "source": "/uploads/(.*)", "destination": { "service": "backend" } },
     { "source": "/api/(.*)", "destination": { "service": "backend" } },
     { "source": "/(.*)", "destination": { "service": "frontend" } }
   ],
