@@ -76,10 +76,11 @@ const signInWithGoogle = async (googleProfile, { role, acquisition, intent } = {
   return { user, isNewUser: true };
 };
 
-// Whether the user still has to finish their role's onboarding (frontend routes on this)
+// Whether the user still has to finish their role's onboarding (frontend routes on this).
+// Startups go straight to the dashboard; the profile is asked for when they first use a tool.
 const needsOnboarding = async (user) => {
   switch (user.role) {
-    case 'startup': return !user.startup;
+    case 'startup': return false;
     case 'incubator': return !user.incubator;
     case 'mentor': return !(await MentorProfile.exists({ user: user._id }));
     default: return false;

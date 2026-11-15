@@ -40,10 +40,11 @@ const removeFile = async (url) => {
   await removeLocal(filePath);
 };
 
+// Only files that were saved somewhere (memory uploads, e.g. pitch decks sent to the AI, have neither)
 const requestFiles = (req) => [
   ...(req.file ? [req.file] : []),
   ...(Array.isArray(req.files) ? req.files : Object.values(req.files || {}).flat()),
-];
+].filter((f) => f.url || f.path);
 
 // Cleans up whatever was saved for a request that ended in an error
 const removeRequestFiles = async (req) => {

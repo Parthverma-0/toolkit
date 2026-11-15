@@ -1,9 +1,12 @@
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { CalendarDays, GraduationCap, HandCoins, Layers, LayoutGrid, SquarePlay, Users } from 'lucide-react'
 import { Badge, Card, Empty, IconTile, Progress, Stat } from '../../components/dashboard/Card.jsx'
+import { Button } from '../../components/dashboard/ui.jsx'
 import { TOOL_ICONS } from '../../constants/tools.js'
 import { SECTORS, STAGES } from '../../constants/startup.js'
 import Async from '../../components/dashboard/Async.jsx'
+import { useStartupProfile } from '../../components/startup/StartupProfile.jsx'
+import { useAuth } from '../../context/AuthContext.jsx'
 import useApi from '../../hooks/useApi.js'
 import { fileUrl, get } from '../../api/client.js'
 import { formatDate, formatDateTime, formatDuration, humanize, relativeDays, sumValues } from '../../utils/format.js'
@@ -14,31 +17,57 @@ const labelOf = (list, id) => list.find((o) => o.id === id)?.label ?? humanize(i
 const PIPELINE = ['requested', 'in_review', 'meeting_scheduled', 'in_discussion', 'invested']
 
 export default function StartupHome() {
-  const state = useApi(() => get('/startups/me/dashboard').then((r) => r.data))
+  const { version } = useStartupProfile()
+  // Reloads after the profile popup creates the startup
+  const state = useApi(() => get('/startups/me/dashboard').then((r) => r.data), [version])
   return <Async state={state}>{(data) => <HomeView data={data} />}</Async>
 }
 
 function HomeView({ data }) {
   const { startup, incubation, tools, mentoring, videos, investors, grants, events } = data
+  const { user } = useAuth()
+  const { requireProfile, openProfileForm } = useStartupProfile()
+  const navigate = useNavigate()
   const toolsUsed = tools.filter((t) => t.runs > 0).length
-  const toolsLive = tools.filter((t) => t.status === 'available').length
+  const firstName = user?.name?.split(' ')[0]
 
   return (
     <div className="grid gap-6">
-      <header className="mb-5 flex flex-wrap items-end justify-between gap-4">
-        <div className="flex items-center gap-5">
-          {startup.logo
-            ? <img src={fileUrl(startup.logo)} alt="" className="size-16 rounded-xl border border-line object-cover" />
-            : <span className="flex size-16 items-center justify-center rounded-xl bg-brand font-display text-2xl font-bold text-white">{startup.name[0]}</span>}
-          <div>
-            <h1 className="font-display text-4xl leading-[1.1] font-extrabold tracking-[-0.03em] text-ink sm:text-[44px]">{startup.name}</h1>
-            <p className="mt-1.5 text-lg text-ink-soft">{labelOf(SECTORS, startup.sector)} · {labelOf(STAGES, startup.stage)}</p>
+      {startup ? (
+        <header className="mb-5 flex flex-wrap items-end justify-between gap-4">
+          <div className="flex items-center gap-5">
+            {startup.logo
+              ? <img src={fileUrl(startup.logo)} alt="" className="size-16 rounded-xl border border-line object-cover" />
+              : <span className="flex size-16 items-center justify-center rounded-xl bg-brand font-display text-2xl font-bold text-white">{startup.name[0]?.toUpperCase()}</span>}
+            <div>
+              <h1 className="font-display text-4xl leading-[1.1] font-extrabold tracking-[-0.03em] text-ink sm:text-[44px]">{startup.name}</h1>
+              <p className="mt-1.5 text-lg text-ink-soft">{labelOf(SECTORS, startup.sector)} · {labelOf(STAGES, startup.stage)}</p>
+            </div>
           </div>
-        </div>
-        <Link to="/startup/profile" className="rounded-xl border border-line bg-surface px-5 py-2.5 text-base font-semibold text-ink hover:border-glow">
-          Edit profile
-        </Link>
-      </header>
+          <Link to="/startup/profile" className="rounded-xl border border-line bg-surface px-5 py-2.5 text-base font-semibold text-ink hover:border-glow">
+            Edit profile
+          </Link>
+        </header>
+      ) : (
+        <>
+          <header className="mb-5">
+            <span aria-hidden="true" className="mb-4 block h-1 w-[47px] rounded-full bg-brand" />
+            <h1 className="font-display text-4xl leading-[1.1] font-extrabold tracking-[-0.03em] text-ink sm:text-[44px]">
+              Welcome{firstName ? `, ${firstName}` : ''}
+            </h1>
+            <p className="mt-2.5 text-lg text-ink-soft">Explore ToolKit. Add your startup details when you are ready to use the tools.</p>
+          </header>
+          <section className="flex flex-wrap items-center justify-between gap-5 rounded-xl border border-brand/30 bg-brand-soft px-6 py-5">
+            <div className="max-w-2xl">
+              <h2 className="font-display text-xl font-bold text-ink">Complete your startup profile</h2>
+              <p className="mt-1 text-base text-ink-soft">
+                Just your startup name, email, sector and stage. It unlocks the tools, mentoring sessions, investor connections and applications.
+              </p>
+            </div>
+            <Button onClick={() => openProfileForm('action')}>Complete profile</Button>
+          </section>
+        </>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-3">
         <Card title="Incubation" icon={Layers} to="/startup/incubation" linkLabel="Open" className="lg:col-span-2">
@@ -111,16 +140,19 @@ function HomeView({ data }) {
 
       <Card title="Tools" icon={LayoutGrid} to="/startup/tools">
         <p className="mb-4 text-sm text-ink-soft">
-          {toolsLive ? `${toolsLive} of ${tools.length} tools live · ${toolsUsed} used` : 'Tools are launching soon.'}
+          {toolsUsed ? `${toolsUsed} of ${tools.length} tools used` : 'Turn your inputs into formal reports: plans, analyses and projections.'}
         </p>
         <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 min-[1700px]:grid-cols-4">
           {tools.map((t) => (
-            <li key={t.type} className="flex items-center gap-3 rounded-xl border border-line px-3.5 py-3">
-              {TOOL_ICONS[t.type] && <IconTile icon={TOOL_ICONS[t.type]} size="sm" />}
-              <span className="flex-1 text-base font-medium text-ink">{t.name}</span>
-              {t.status === 'available'
-                ? <span className="text-xs text-ink-soft">{t.runs ? `${t.runs} runs` : 'Try it'}</span>
-                : <Badge>Soon</Badge>}
+            <li key={t.type}>
+              <button type="button" onClick={() => requireProfile(() => navigate(`/startup/tools/${t.type}`), 'tool')}
+                className="flex w-full items-center gap-3 rounded-xl border border-line px-3.5 py-3 text-left transition hover:border-glow">
+                {TOOL_ICONS[t.type] && <IconTile icon={TOOL_ICONS[t.type]} size="sm" />}
+                <span className="flex-1 text-base font-medium text-ink">{t.name}</span>
+                {t.status === 'available'
+                  ? <span className="text-xs text-ink-soft">{t.runs ? `${t.runs} runs` : 'Try it'}</span>
+                  : <Badge>Soon</Badge>}
+              </button>
             </li>
           ))}
         </ul>

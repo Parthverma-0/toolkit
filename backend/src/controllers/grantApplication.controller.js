@@ -57,7 +57,9 @@ const browseGrants = asyncHandler(async (req, res) => {
 const getGrant = asyncHandler(async (req, res) => {
   const grant = await Grant.findById(req.params.id).select('-createdBy').populate('incubator', 'name logo');
   if (!grant) throw ApiError.notFound('Grant not found');
-  const myApplication = await GrantApplication.findOne({ grant: grant._id, startup: req.startup._id });
+  const myApplication = req.startup
+    ? await GrantApplication.findOne({ grant: grant._id, startup: req.startup._id })
+    : null;
   res.json({
     success: true,
     data: { ...grant.toObject(), isAcceptingApplications: isAcceptingApplications(grant), myApplication },

@@ -1,5 +1,4 @@
 import axios from 'axios'
-import { isDemo } from '../demo/session.js'
 
 // All requests go to /api on the same origin. In dev, Vite proxies /api and /uploads
 // to the backend (see vite.config.js); on Vercel the backend is a service of the same
@@ -7,13 +6,7 @@ import { isDemo } from '../demo/session.js'
 // In production set VITE_API_URL if the API lives on another domain.
 const API_URL = import.meta.env.VITE_API_URL || '/api'
 
-// Demo sessions are answered in the browser; the demo code is only downloaded when used
-const networkAdapter = axios.getAdapter(axios.defaults.adapter)
-const adapter = (config) => (isDemo()
-  ? import('../demo/adapter.js').then((m) => m.default(config))
-  : networkAdapter(config))
-
-const api = axios.create({ baseURL: API_URL, withCredentials: true, adapter })
+const api = axios.create({ baseURL: API_URL, withCredentials: true })
 
 // Auth endpoints that must never trigger a refresh-and-retry loop
 const NO_REFRESH = ['/auth/google', '/auth/refresh', '/auth/logout']
@@ -26,6 +19,15 @@ export const onSessionExpired = (fn) => {
   listeners.add(fn)
   return () => listeners.delete(fn)
 }
+
+// A startup without a profile tried an action (tool, apply, book, connect, register...).
+// The backend answers 403 PROFILE_INCOMPLETE; the startup area subscribes and opens the profile popup.
+const profileListeners = new Set()
+export const onProfileRequired = (fn) => {
+  profileListeners.add(fn)
+  return () => profileListeners.delete(fn)
+}
+export const isProfileRequired = (err) => err?.response?.data?.code === 'PROFILE_INCOMPLETE'
 
 // Direct uploads. When the backend stores files on Cloudinary (always the case on Vercel,
 // where request bodies are capped at 4.5 MB), each file goes straight from the browser to
@@ -55,7 +57,7 @@ const uploadDirect = async (file) => {
 }
 
 api.interceptors.request.use(async (config) => {
-  if (isDemo() || config._direct || !(config.data instanceof FormData)) return config
+  if (config._direct || !(config.data instanceof FormData)) return config
   const entries = [...config.data.entries()]
   const refs = []
   for (const [field, value] of entries) {
@@ -78,7 +80,8 @@ api.interceptors.response.use(
   (res) => res,
   async (error) => {
     const { config, response } = error
-    const skip = !config || config._retried || NO_REFRESH.some((p) => config.url?.startsWith(p))
+    if (isProfileRequired(error)) profileListeners.forEach((fn) => fn())
+    const skip =!config || config._retried || NO_REFRESH.some((p) => config.url?.startsWith(p))
     if (response?.status !== 401 || skip) throw error
 
     // One refresh call shared by every request that hit 401 at the same time
@@ -97,6 +100,7 @@ api.interceptors.response.use(
 // Human-readable message from an API error ({ success:false, message, details? })
 export const errorMessage = (err, fallback = 'Something went wrong. Please try again.') => {
   const data = err?.response?.data
+  if (isProfileRequired(err)) return 'Complete your startup profile to continue.'
   if (data?.details?.length) return data.details.map((d) => d.message).join('. ')
   if (data?.message) return data.message
   if (err?.code === 'ERR_NETWORK') return "Can't reach the server. Is the backend running?"

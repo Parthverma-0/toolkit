@@ -5,7 +5,7 @@ const { removeRequestFiles } = require('../services/storage.service');
 const DUPLICATE_MESSAGES = {
   email: 'This email is already registered with another role',
   cin: 'A startup with this CIN is already registered',
-  dpiitNumber: 'A startup with this DPIIT number is already registered',
+  dippNumber: 'A startup with this DIPP number is already registered',
   owner: 'You have already created a startup profile',
 };
 

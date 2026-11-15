@@ -3,7 +3,7 @@ const investor = require('../controllers/investor.controller');
 const v = require('../validators/investor.validator');
 const validate = require('../middlewares/validate.middleware');
 const { protect, authorize } = require('../middlewares/auth.middleware');
-const { requireCompleteProfile } = require('../middlewares/startup.middleware');
+const { requireCompleteProfile, listOrEmpty } = require('../middlewares/startup.middleware');
 const { requireIncubator } = require('../middlewares/incubator.middleware');
 
 router.use(protect);
@@ -12,7 +12,7 @@ const startupOnly = [authorize('startup'), ...requireCompleteProfile];
 const incubatorOnly = [authorize('incubator'), requireIncubator];
 
 // Startup connection pipeline (before /:id so "connections" isn't read as an id)
-router.get('/connections', startupOnly, v.listConnections, validate, investor.listMyConnections);
+router.get('/connections', authorize('startup'), listOrEmpty, v.listConnections, validate, investor.listMyConnections);
 router.route('/connections/:connectionId')
   .patch(startupOnly, v.updateConnection, validate, investor.updateConnection)
   .delete(startupOnly, v.connectionId, validate, investor.withdrawConnection);

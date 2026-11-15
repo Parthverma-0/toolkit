@@ -30,11 +30,10 @@ const listFounders = asyncHandler(async (req, res) => {
 
 // PUT /api/startups/me/founders/primary  (multipart, optional `photo`)
 // The logged-in user's own founder profile. Email comes from the Google account;
-// phone is taken as entered (no OTP verification) and kept in sync on the account.
+// phone is optional, taken as entered (no OTP verification) and kept in sync on the account.
 const upsertPrimaryFounder = asyncHandler(async (req, res) => {
-  const phone = req.body.phone || req.user.phone;
-  if (!phone) throw ApiError.badRequest('phone is required');
-  if (phone !== req.user.phone) {
+  const phone = req.body.phone || req.user.phone || undefined;
+  if (phone && phone !== req.user.phone) {
     req.user.phone = phone;
     req.user.isPhoneVerified = false;
     await req.user.save();

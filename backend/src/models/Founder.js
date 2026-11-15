@@ -8,10 +8,10 @@ const founderSchema = new mongoose.Schema(
 
     fullName: { type: String, required: true, trim: true },
     email: { type: String, required: true, lowercase: true, trim: true },
-    phone: { type: String, required: true, trim: true },
+    phone: { type: String, trim: true },
     isEmailVerified: { type: Boolean, default: false },
     isPhoneVerified: { type: Boolean, default: false },
-    designation: { type: String, required: true, trim: true }, // CEO, CTO, ...
+    designation: { type: String, trim: true }, // CEO, CTO, ...
 
     photo: String,
     gender: { type: String, enum: ['male', 'female', 'other', 'prefer_not_to_say'] },

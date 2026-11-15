@@ -2,44 +2,51 @@ const {
   Enrollment, MentoringSession, Grant, GrantApplication, InvestorConnection, EventRegistration, Video, ToolSubmission,
 } = require('../models');
 const asyncHandler = require('../utils/asyncHandler');
-const TOOLS = require('../config/tools');
+const { listPublic } = require('../config/tools');
 
 const countBy = async (Model, match, field = 'status') => {
   const rows = await Model.aggregate([{ $match: match }, { $group: { _id: `$${field}`, count: { $sum: 1 } } }]);
   return Object.fromEntries(rows.map((r) => [r._id, r.count]));
 };
 
-// GET /api/startups/me/dashboard  (after requireCompleteProfile)
+// GET /api/startups/me/dashboard  (after loadStartup)
 // One call that powers the startup home screen: a card per dashboard section.
+// Works before the startup has a profile: startup is null and its own sections are empty.
 const getStartupDashboard = asyncHandler(async (req, res) => {
   const { startup } = req;
   const now = new Date();
-  const sectorMatch = { $or: [{ sectors: startup.sector }, { sectors: { $size: 0 } }] };
-  const stageMatch = { $or: [{ stages: startup.stage }, { stages: { $size: 0 } }] };
+  const none = (value) => Promise.resolve(value);
+  const grantFilter = { status: 'open' };
+  if (startup) {
+    grantFilter.$and = [
+      { $or: [{ sectors: startup.sector }, { sectors: { $size: 0 } }] },
+      { $or: [{ stages: startup.stage }, { stages: { $size: 0 } }] },
+    ];
+  }
 
   const [
     enrollment, nextSession, upcomingSessions, matchingGrants, grantApplications,
     investorPipeline, eventRegistrations, latestVideos, toolRuns,
   ] = await Promise.all([
-    Enrollment.findOne({ startup: startup._id, status: 'active' })
+    startup ? Enrollment.findOne({ startup: startup._id, status: 'active' })
       .select('cohort milestones marketingChecklist agreement.isSigned')
-      .populate({ path: 'cohort', select: 'name endDate incubator', populate: { path: 'incubator', select: 'name logo' } }),
-    MentoringSession.findOne({ startup: startup._id, status: 'confirmed', scheduledAt: { $gte: now } })
+      .populate({ path: 'cohort', select: 'name endDate incubator', populate: { path: 'incubator', select: 'name logo' } }) : none(null),
+    startup ? MentoringSession.findOne({ startup: startup._id, status: 'confirmed', scheduledAt: { $gte: now } })
       .sort({ scheduledAt: 1 })
-      .populate('mentor', 'name avatar'),
-    MentoringSession.countDocuments({ startup: startup._id, status: { $in: ['requested', 'confirmed'] }, scheduledAt: { $gte: now } }),
-    Grant.countDocuments({ status: 'open', $and: [sectorMatch, stageMatch] }),
-    countBy(GrantApplication, { startup: startup._id }),
-    countBy(InvestorConnection, { startup: startup._id }),
+      .populate('mentor', 'name avatar') : none(null),
+    startup ? MentoringSession.countDocuments({ startup: startup._id, status: { $in: ['requested', 'confirmed'] }, scheduledAt: { $gte: now } }) : none(0),
+    Grant.countDocuments(grantFilter),
+    startup ? countBy(GrantApplication, { startup: startup._id }) : none({}),
+    startup ? countBy(InvestorConnection, { startup: startup._id }) : none({}),
     EventRegistration.find({ user: req.user._id, status: 'registered' })
       .populate({ path: 'event', match: { startsAt: { $gte: now }, status: 'published' }, select: 'title startsAt mode' }),
     Video.find({ status: 'published' }).sort({ publishedAt: -1 }).limit(4)
       .select('title thumbnailUrl category durationSeconds mentor')
       .populate('mentor', 'name'),
-    ToolSubmission.aggregate([
+    startup ? ToolSubmission.aggregate([
       { $match: { startup: startup._id } },
       { $group: { _id: '$toolType', runs: { $sum: 1 }, lastRunAt: { $max: '$createdAt' } } },
-    ]),
+    ]) : none([]),
   ]);
 
   const upcomingEvents = eventRegistrations.filter((r) => r.event).map((r) => r.event)
@@ -49,8 +56,9 @@ const getStartupDashboard = asyncHandler(async (req, res) => {
   res.json({
     success: true,
     data: {
-      startup: {
+      startup: startup && {
         id: startup._id, name: startup.name, logo: startup.logo, sector: startup.sector, stage: startup.stage,
+        isProfileComplete: startup.isProfileComplete,
       },
       incubation: enrollment && {
         enrollmentId: enrollment._id,
@@ -61,7 +69,7 @@ const getStartupDashboard = asyncHandler(async (req, res) => {
         },
         agreementSigned: enrollment.agreement.isSigned,
       },
-      tools: TOOLS.map(({ type, name, status }) => ({
+      tools: listPublic().map(({ type, name, status }) => ({
         type, name, status, runs: toolsByType[type]?.runs || 0, lastRunAt: toolsByType[type]?.lastRunAt || null,
       })),
       mentoring: { upcoming: upcomingSessions, next: nextSession },

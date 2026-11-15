@@ -17,17 +17,17 @@ Rules that apply everywhere:
 | # | Page / component | Route | Status |
 |---|---|---|---|
 | 0.1 | Login screen (AuthCard, RoleSelector, GoogleButton, AuthLayout) | `/login` | Approved |
-| 0.2 | Demo login button (skips Google, walks the full flow: onboarding with sample data -> dashboard) | `/login` | Draft |
 | 0.3 | Signup screen | `/signup` | Draft |
 
-## Phase 1 - Startup onboarding
+## Phase 1 - Startup profile
+
+Startups have no onboarding: after Google sign-up they land on the dashboard. The old 3-step
+`/onboarding/startup` flow was removed (the route now redirects to `/startup`).
 
 | # | Page / component | Route | Status |
 |---|---|---|---|
-| 1.1 | Onboarding page frame (header, side step list) | `/onboarding/startup` | Approved |
-| 1.2 | Step 1: startup details (logo upload, CIN, DPIIT, sector, stage) | | Approved |
-| 1.3 | Step 2: founder and contact (email and phone OTP fields) | | Approved |
-| 1.4 | Step 3: review and submit, success screen | | Approved |
+| 1.1 | "Complete your startup profile" popup (`components/startup/StartupProfile.jsx`) in 3 steps: startup details -> founder & contact -> review. Required: name, email, sector, stage; everything else (logo, CIN 21 chars, DIPP 6 digits, problem/solution, founder details) optional | any startup page | Draft |
+| 1.2 | Gate: tools and every action (apply, book, connect, register) open the popup until the profile is complete; browsing stays open | | Draft |
 
 ## Phase 2 - Shared dashboard pieces
 
@@ -98,5 +98,4 @@ Rules that apply everywhere:
 
 Add your direction for each item here before I build it (feel, layout, behaviour).
 
-- 0.2 Demo login:
 - 0.3 Signup:

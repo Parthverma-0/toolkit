@@ -64,14 +64,16 @@ const ACQUISITION_SOURCES = [
   'email_campaign', 'event', 'referral', 'ic_website', 'social_media', 'platform_search', 'direct', 'other',
 ];
 
-// Company Identification Number, e.g. U72900KA2021PTC123456
-const CIN_REGEX = /^[LU]\d{5}[A-Z]{2}\d{4}[A-Z]{3}\d{6}$/;
-// DPIIT recognition number, e.g. DIPP123456
-const DPIIT_REGEX = /^DIPP\d{3,}$/;
+// Company Identification Number (MCA), 21 characters:
+// listing (L/U) + 5-digit industry code + 2-letter state + 4-digit year + 3-letter company type + 6-digit number
+// e.g. U72900KA2021PTC123456
+const CIN_REGEX = /^[LU]\d{5}[A-Z]{2}(\d{4})[A-Z]{3}\d{6}$/;
+// Startup India recognition (DIPP) number: 6 digits, e.g. 123456
+const DIPP_REGEX = /^\d{6}$/;
 
 module.exports = {
   CIN_REGEX,
-  DPIIT_REGEX,
+  DIPP_REGEX,
   FUNNEL_STAGES,
   ACQUISITION_SOURCES,
   ROLES,

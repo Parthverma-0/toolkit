@@ -1,9 +1,10 @@
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
-const { Otp } = require('../models');
+const { Otp, User } = require('../models');
 const config = require('../config');
 const ApiError = require('../utils/ApiError');
 const { sendEmail, sendSms } = require('./messaging.service');
+const { verificationCode } = require('./emailTemplates');
 
 const PURPOSE_BY_CHANNEL = { email: 'verify_email', phone: 'verify_phone' };
 
@@ -39,11 +40,11 @@ const sendOtp = async ({ userId, channel, target }) => {
     expiresAt: minutesFromNow(config.otp.ttlMinutes),
   });
 
-  const text = `Your Toolkit verification code is ${code}. It expires in ${config.otp.ttlMinutes} minutes.`;
   if (channel === 'email') {
-    await sendEmail({ to: target, subject: 'Your Toolkit verification code', text });
+    const user = await User.findById(userId).select('name');
+    await sendEmail({ to: target, ...verificationCode({ name: user?.name, code, ttlMinutes: config.otp.ttlMinutes }) });
   } else {
-    await sendSms({ to: target, text });
+    await sendSms({ to: target, text: `Your ToolKit verification code is ${code}. It is valid for ${config.otp.ttlMinutes} minutes. Do not share it with anyone.` });
   }
 
   return { expiresInSeconds: config.otp.ttlMinutes * 60 };

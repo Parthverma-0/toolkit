@@ -42,6 +42,16 @@ module.exports = {
     maxAttempts: 5,
     proofValidMinutes: 60, // how long a verified OTP counts as proof of ownership
   },
+  // AI reports for the dashboard tools. Without GEMINI_API_KEY the tools answer "not set up yet".
+  gemini: {
+    apiKey: process.env.GEMINI_API_KEY,
+    // Empty = pick the newest stable "flash" model the key can use
+    model: process.env.GEMINI_MODEL,
+    // Google Search grounding (citations) for Market Research and Competitor Analysis.
+    // Not available on the free tier for current models, so it is opt-in.
+    webSearch: process.env.GEMINI_WEB_SEARCH === 'true',
+    timeoutMs: Number(process.env.GEMINI_TIMEOUT_MS) || 240000,
+  },
   smtp: {
     host: process.env.SMTP_HOST,
     port: Number(process.env.SMTP_PORT) || 587,

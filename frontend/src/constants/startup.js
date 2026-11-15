@@ -1,7 +1,29 @@
-// Mirrors backend utils/constants.js + utils/phone.js so the form fails fast with the same rules
-export const CIN_REGEX = /^[LU]\d{5}[A-Z]{2}\d{4}[A-Z]{3}\d{6}$/
-export const DPIIT_REGEX = /^DIPP\d{3,}$/
+// Mirrors backend utils/constants.js + validators/startup.validator.js so forms fail fast with the same rules
+// CIN: L/U + 5-digit industry code + 2-letter state + 4-digit year + 3-letter company type + 6 digits
+export const CIN_REGEX = /^[LU]\d{5}[A-Z]{2}(\d{4})[A-Z]{3}\d{6}$/
+// Startup India recognition (DIPP) number: 6 digits
+export const DIPP_REGEX = /^\d{6}$/
 export const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+// Optional fields: '' is fine, anything else must be valid
+export const cinError = (value) => {
+  if (!value) return ''
+  const m = CIN_REGEX.exec(value)
+  if (!m) return 'CIN must be 21 characters, e.g. U72900KA2021PTC123456'
+  const year = Number(m[1])
+  if (year < 1850 || year > new Date().getFullYear()) return 'CIN has an invalid incorporation year (characters 9 to 12)'
+  return ''
+}
+export const dippError = (value) => (!value || DIPP_REGEX.test(value) ? '' : 'DIPP number must be 6 digits, e.g. 123456')
+// Typing helpers: CIN upper-case without spaces; DIPP digits only (drops a pasted "DIPP" prefix)
+export const cleanCin = (v) => v.toUpperCase().replace(/\s/g, '').slice(0, 21)
+export const cleanDipp = (v) => v.replace(/^\s*DIPP/i, '').replace(/\D/g, '').slice(0, 6)
+
+export const startupNameError = (value) => {
+  if (!value.trim()) return 'Enter your startup name'
+  if (value.includes('@')) return 'Enter your startup name, not an email address'
+  return ''
+}
 
 export const normalizePhone = (raw) => {
   const digits = String(raw).replace(/[\s\-()]/g, '')

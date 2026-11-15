@@ -1,6 +1,6 @@
 const { body, param } = require('express-validator');
 const {
-  SECTORS, STARTUP_STAGES, CIN_REGEX, DPIIT_REGEX,
+  SECTORS, STARTUP_STAGES, CIN_REGEX, DIPP_REGEX,
 } = require('../utils/constants');
 const { toJson } = require('../utils/multipart');
 const { normalizePhone } = require('../utils/phone');
@@ -12,16 +12,30 @@ const notInFuture = (value) => {
 
 const isPlainObject = (v) => v && typeof v === 'object' && !Array.isArray(v);
 
-// isCreate=true -> mandatory fields required; false -> everything optional (PATCH)
+// CIN: format plus a sane incorporation year (characters 9-12)
+const validCin = (value) => {
+  const m = CIN_REGEX.exec(value);
+  if (!m) throw new Error('CIN must be 21 characters, e.g. U72900KA2021PTC123456');
+  const year = Number(m[1]);
+  if (year < 1850 || year > new Date().getFullYear()) throw new Error('CIN has an invalid incorporation year');
+  return true;
+};
+
+// Accepts "123456", "DIPP123456" or "DIPP 123456" and keeps the 6 digits
+const toDipp = (v) => (typeof v === 'string' ? v.replace(/\s+/g, '').replace(/^DIPP/i, '') : v);
+
+// isCreate=true -> name, startupEmail, sector, stage required; false -> everything optional (PATCH).
+// CIN and DIPP number are always optional but must be valid when given.
 const startupFields = (isCreate) => {
   const req = (chain) => (isCreate ? chain : chain.optional());
   return [
-    req(body('name')).isString().withMessage('name is required').bail().trim().notEmpty().withMessage('name is required').isLength({ max: 150 }),
-    req(body('startupEmail')).trim().toLowerCase().isEmail().withMessage('valid startupEmail is required'),
-    req(body('cin')).isString().trim().toUpperCase()
-      .matches(CIN_REGEX).withMessage('CIN must be 21 characters, e.g. U72900KA2021PTC123456'),
-    req(body('dpiitNumber')).isString().trim().toUpperCase()
-      .matches(DPIIT_REGEX).withMessage('DPIIT number must look like DIPP123456'),
+    req(body('name')).isString().withMessage('Startup name is required').bail().trim().notEmpty().withMessage('Startup name is required')
+      .isLength({ max: 150 })
+      .not().contains('@').withMessage('Enter your startup name, not an email address'),
+    req(body('startupEmail')).trim().toLowerCase().isEmail().withMessage('A valid startup email is required'),
+    body('cin').optional({ values: 'falsy' }).isString().trim().toUpperCase().custom(validCin),
+    body('dippNumber').optional({ values: 'falsy' }).isString().customSanitizer(toDipp)
+      .matches(DIPP_REGEX).withMessage('DIPP number must be 6 digits, e.g. 123456'),
     req(body('sector')).isIn(SECTORS).withMessage(`sector must be one of: ${SECTORS.join(', ')}`),
     req(body('stage')).isIn(STARTUP_STAGES).withMessage(`stage must be one of: ${STARTUP_STAGES.join(', ')}`),
 
@@ -60,29 +74,28 @@ const phoneField = (chain) => chain
   .custom((v) => Boolean(normalizePhone(v))).withMessage('Invalid phone number')
   .customSanitizer(normalizePhone);
 
-// Primary founder = the logged-in user; email comes from the account, phone is optional
-// here only because an earlier save may already have stored it (controller requires one overall)
+// Primary founder = the logged-in user; email comes from the account. Only the name is required.
 const upsertPrimaryFounder = [
   body('fullName').isString().withMessage('fullName is required').bail().trim().notEmpty().withMessage('fullName is required').isLength({ max: 100 }),
-  body('designation').isString().withMessage('designation is required').bail().trim().notEmpty().withMessage('designation is required').isLength({ max: 60 }),
-  phoneField(body('phone').optional()),
+  body('designation').optional({ values: 'falsy' }).isString().trim().isLength({ max: 60 }),
+  phoneField(body('phone').optional({ values: 'falsy' })),
   ...founderOptionalFields,
 ];
 
 const addCoFounder = [
   body('fullName').isString().withMessage('fullName is required').bail().trim().notEmpty().withMessage('fullName is required').isLength({ max: 100 }),
-  body('designation').isString().withMessage('designation is required').bail().trim().notEmpty().withMessage('designation is required').isLength({ max: 60 }),
+  body('designation').optional({ values: 'falsy' }).isString().trim().isLength({ max: 60 }),
   body('email').trim().toLowerCase().isEmail().withMessage('valid email is required'),
-  phoneField(body('phone').exists().withMessage('phone is required')),
+  phoneField(body('phone').optional({ values: 'falsy' })),
   ...founderOptionalFields,
 ];
 
 const updateFounder = [
   param('id').isMongoId().withMessage('Invalid founder id'),
   body('fullName').optional().isString().trim().notEmpty().isLength({ max: 100 }),
-  body('designation').optional().isString().trim().notEmpty().isLength({ max: 60 }),
+  body('designation').optional().isString().trim().isLength({ max: 60 }),
   body('email').optional().trim().toLowerCase().isEmail().withMessage('valid email is required'),
-  phoneField(body('phone').optional()),
+  phoneField(body('phone').optional({ values: 'falsy' })),
   ...founderOptionalFields,
 ];
 

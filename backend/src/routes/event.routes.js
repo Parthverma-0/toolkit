@@ -6,7 +6,8 @@ const { protect, authorize } = require('../middlewares/auth.middleware');
 const { requireCompleteProfileIfStartup } = require('../middlewares/startup.middleware');
 const { eventBannerUpload } = require('../middlewares/upload.middleware');
 
-router.use(protect, requireCompleteProfileIfStartup);
+// Everyone can browse events; startups need a complete profile to register
+router.use(protect);
 
 const organizer = authorize('incubator', 'mentor');
 
@@ -23,8 +24,8 @@ router.route('/:id')
 router.patch('/:id/status', organizer, v.changeStatus, validate, event.changeStatus);
 
 router.route('/:id/register')
-  .post(v.eventId, validate, event.register)
-  .delete(v.eventId, validate, event.cancelRegistration);
+  .post(requireCompleteProfileIfStartup, v.eventId, validate, event.register)
+  .delete(requireCompleteProfileIfStartup, v.eventId, validate, event.cancelRegistration);
 
 router.get('/:id/registrations', organizer, v.eventId, validate, event.listRegistrations);
 router.patch('/:id/registrations/:registrationId', organizer, v.markAttendance, validate, event.markAttendance);

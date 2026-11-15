@@ -8,11 +8,14 @@ const {
 } = require('../services/startup.service');
 
 const STARTUP_FIELDS = [
-  'name', 'startupEmail', 'cin', 'dpiitNumber', 'sector', 'stage', 'problemStatement', 'solution',
+  'name', 'startupEmail', 'cin', 'dippNumber', 'sector', 'stage', 'problemStatement', 'solution',
   'tagline', 'website', 'foundedOn', 'teamSize', 'address', 'socialLinks',
 ];
 // Locked once the platform has verified the startup
-const LEGAL_FIELDS = ['cin', 'dpiitNumber'];
+const LEGAL_FIELDS = ['cin', 'dippNumber'];
+
+// Empty optional values stay unset (CIN / DIPP number are unique only when present)
+const withoutEmpty = (data) => Object.fromEntries(Object.entries(data).filter(([, v]) => v !== ''));
 
 // GET /api/startups/me  -> startup (or null) + onboarding checklist for the frontend
 const getMyStartup = asyncHandler(async (req, res) => {
@@ -21,18 +24,18 @@ const getMyStartup = asyncHandler(async (req, res) => {
   res.json({ success: true, data: startup, onboarding });
 });
 
-// POST /api/startups/me  (multipart, `logo` file required)
+// POST /api/startups/me  (multipart; name, startupEmail, sector, stage required; `logo` optional)
+// Sent by the "complete your profile" popup; creating it completes the profile.
 const createMyStartup = asyncHandler(async (req, res) => {
   if (await Startup.exists({ owner: req.user._id })) {
     throw ApiError.conflict('You have already created a startup profile. Use PATCH to update it.');
   }
-  const logo = req.files?.logo?.[0];
-  if (!logo) throw ApiError.badRequest('Startup logo is required');
-
-  const data = pick(req.body, STARTUP_FIELDS);
+  const data = withoutEmpty(pick(req.body, STARTUP_FIELDS));
   await assertStartupEmailVerified(req.user, data.startupEmail);
 
-  const startup = await Startup.create({ ...data, logo: toPublicUrl(logo), owner: req.user._id });
+  const logo = req.files?.logo?.[0];
+  if (logo) data.logo = toPublicUrl(logo);
+  const startup = await Startup.create({ ...data, owner: req.user._id });
   req.user.startup = startup._id;
   await req.user.save();
 
@@ -45,7 +48,7 @@ const updateMyStartup = asyncHandler(async (req, res) => {
   const startup = await Startup.findOne({ owner: req.user._id });
   if (!startup) throw ApiError.notFound('Create your startup profile first');
 
-  const updates = pick(req.body, STARTUP_FIELDS);
+  const updates = withoutEmpty(pick(req.body, STARTUP_FIELDS));
   if (startup.isVerified) {
     const changed = LEGAL_FIELDS.filter((f) => updates[f] !== undefined && updates[f] !== startup[f]);
     if (changed.length) throw ApiError.badRequest(`${changed.join(', ')} cannot be changed after verification`);
@@ -60,7 +63,7 @@ const updateMyStartup = asyncHandler(async (req, res) => {
 
   applyUpdates(startup, updates, ['address', 'socialLinks']);
   await startup.save();
-  if (logo) await removeFile(oldLogo);
+  if (logo && oldLogo) await removeFile(oldLogo);
 
   const onboarding = await refreshProfileCompletion(startup, req.user);
   res.json({ success: true, data: startup, onboarding });

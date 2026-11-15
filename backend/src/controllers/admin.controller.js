@@ -146,9 +146,9 @@ const setUserStatus = asyncHandler(async (req, res) => {
 
 // GET /api/admin/startups?q=
 const listStartups = asyncHandler(async (req, res) => {
-  const filter = textMatch(req.query.q, ['name', 'cin', 'dpiitNumber']);
+  const filter = textMatch(req.query.q, ['name', 'cin', 'dippNumber']);
   res.json(await paged(req, Startup, filter, (qy) => qy
-    .select('name logo sector stage cin dpiitNumber owner createdAt')
+    .select('name logo sector stage cin dippNumber owner createdAt')
     .populate('owner', 'name email status')
     .sort({ createdAt: -1 })));
 });

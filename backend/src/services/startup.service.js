@@ -20,20 +20,23 @@ const assertEquityWithinLimit = async (startupId, equityPercent, excludeFounderI
   if (total > 100) throw ApiError.badRequest(`Total founder equity would be ${total}%, max is 100%`);
 };
 
+// The only fields a startup must fill before using tools and other actions
+const REQUIRED_PROFILE_FIELDS = ['name', 'startupEmail', 'sector', 'stage'];
+const hasRequiredFields = (startup) => Boolean(startup) && REQUIRED_PROFILE_FIELDS.every((f) => startup[f]);
+
 const getOnboardingStatus = async (user, startup) => {
   const hasPrimaryFounder = startup ? Boolean(await Founder.exists({ startup: startup._id, isPrimary: true })) : false;
   return {
     startupProfile: Boolean(startup),
-    founderProfile: hasPrimaryFounder,
+    founderProfile: hasPrimaryFounder, // optional
     isProfileComplete: Boolean(startup?.isProfileComplete),
   };
 };
 
-// Dashboard unlocks once: startup profile + primary founder profile.
-// Call after any change that could affect completion.
+// Complete = name, email, sector and stage are set. Call after any change that could affect it.
 const refreshProfileCompletion = async (startup, user) => {
   const status = await getOnboardingStatus(user, startup);
-  const complete = status.startupProfile && status.founderProfile;
+  const complete = hasRequiredFields(startup);
 
   if (complete !== startup.isProfileComplete) {
     startup.isProfileComplete = complete;

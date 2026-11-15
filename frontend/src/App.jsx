@@ -3,13 +3,14 @@ import AuthLayout from './layouts/AuthLayout.jsx'
 import DashboardLayout from './layouts/DashboardLayout.jsx'
 import Login from './pages/auth/Login.jsx'
 import Signup from './pages/auth/Signup.jsx'
-import StartupOnboarding from './pages/onboarding/StartupOnboarding.jsx'
 import IncubatorOnboarding from './pages/onboarding/IncubatorOnboarding.jsx'
 import MentorOnboarding from './pages/onboarding/MentorOnboarding.jsx'
 import StartupHome from './pages/startup/StartupHome.jsx'
 import Profile from './pages/startup/Profile.jsx'
 import Incubation from './pages/startup/Incubation.jsx'
 import Tools from './pages/startup/Tools.jsx'
+import ToolRun from './pages/startup/ToolRun.jsx'
+import ToolReport from './pages/startup/ToolReport.jsx'
 import Mentoring from './pages/startup/Mentoring.jsx'
 import Videos, { VideoDetail } from './pages/startup/Videos.jsx'
 import Investors from './pages/startup/Investors.jsx'
@@ -31,6 +32,7 @@ import MentorEvents from './pages/mentor/MentorEvents.jsx'
 import MentorProfile from './pages/mentor/MentorProfile.jsx'
 import { INCUBATOR_NAV, MENTOR_NAV, STARTUP_NAV } from './constants/nav.js'
 import RequireAuth, { GuestOnly } from './components/RequireAuth.jsx'
+import { StartupProfileProvider } from './components/startup/StartupProfile.jsx'
 
 export default function App() {
   return (
@@ -39,14 +41,17 @@ export default function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
       </Route>
-      <Route path="/onboarding/startup" element={<RequireAuth role="startup" onboarding><StartupOnboarding /></RequireAuth>} />
+      {/* Startups skip onboarding: the profile is asked for in a popup when they first use a tool */}
+      <Route path="/onboarding/startup" element={<Navigate to="/startup" replace />} />
       <Route path="/onboarding/incubator" element={<RequireAuth role="incubator" onboarding><IncubatorOnboarding /></RequireAuth>} />
       <Route path="/onboarding/mentor" element={<RequireAuth role="mentor" onboarding><MentorOnboarding /></RequireAuth>} />
 
-      <Route path="/startup" element={<RequireAuth role="startup"><DashboardLayout nav={STARTUP_NAV} roleLabel="Startup" orgUrl="/startups/me" /></RequireAuth>}>
+      <Route path="/startup" element={<RequireAuth role="startup"><StartupProfileProvider><DashboardLayout nav={STARTUP_NAV} roleLabel="Startup" /></StartupProfileProvider></RequireAuth>}>
         <Route index element={<StartupHome />} />
         <Route path="incubation" element={<Incubation />} />
         <Route path="tools" element={<Tools />} />
+        <Route path="tools/:type" element={<ToolRun />} />
+        <Route path="tools/:type/reports/:id" element={<ToolReport />} />
         <Route path="mentoring" element={<Mentoring />} />
         <Route path="videos" element={<Videos />} />
         <Route path="videos/:id" element={<VideoDetail />} />
