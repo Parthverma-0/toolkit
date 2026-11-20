@@ -1,8 +1,12 @@
 import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Badge, Card, Empty, Stat } from '../../components/dashboard/Card.jsx'
 import { Button, Chips, Detail, Drawer, PageHeader, SearchInput, StatusPill, Tabs, useToast } from '../../components/dashboard/ui.jsx'
 import { Field, Textarea, TextInput } from '../../components/ui/Field.jsx'
 import Async from '../../components/dashboard/Async.jsx'
+import ConnectionsPanel from '../../components/network/ConnectionsPanel.jsx'
+import Messenger from '../../components/network/Messenger.jsx'
+import RegisteredInvestors from '../../components/startup/RegisteredInvestors.jsx'
 import useApi from '../../hooks/useApi.js'
 import useDebounced from '../../hooks/useDebounced.js'
 import { del, errorMessage, get, post } from '../../api/client.js'
@@ -15,19 +19,40 @@ const TYPES = [{ id: 'all', label: 'All types' }, ...INVESTOR_TYPES.map((t) => (
 const PIPELINE = ['requested', 'in_review', 'meeting_scheduled', 'in_discussion', 'invested', 'declined']
 
 export default function Investors() {
-  const [tab, setTab] = useState('directory')
+  const [params, setParams] = useSearchParams()
+  const TABS = ['registered', 'requests', 'messages', 'directory', 'pipeline']
+  const tab = TABS.includes(params.get('tab')) ? params.get('tab') : 'registered'
   const state = useApi(() => get('/investors/connections').then((r) => r.data))
+  const network = useApi(() => get('/network/connections').then((r) => r.data))
   const connections = state.data ?? []
+  const incoming = (network.data ?? []).filter((c) => c.direction === 'received' && c.status === 'pending').length
+  const unread = (network.data ?? []).reduce((sum, c) => sum + (c.unread || 0), 0)
+  const [openMessage, setOpenMessage] = useState(null)
+  const go = (id) => setParams(id === 'registered' ? {} : { tab: id })
   return (
     <div>
-      <PageHeader title="Investors" subtitle="Find investors that back your sector and stage, and track every conversation." />
+      <PageHeader title="Investors" subtitle="Connect with investors on Toolkit, manage their requests, and track every conversation." />
       <Tabs
-        tabs={[{ id: 'directory', label: 'Directory' }, { id: 'pipeline', label: 'My pipeline', count: connections.length }]}
-        value={tab} onChange={setTab}
+        tabs={[
+          { id: 'registered', label: 'Registered investors' },
+          { id: 'requests', label: 'Requests', count: incoming || undefined },
+          { id: 'messages', label: 'Messages', count: unread || undefined },
+          { id: 'directory', label: 'Directory' },
+          { id: 'pipeline', label: 'My pipeline', count: connections.length },
+        ]}
+        value={tab} onChange={go}
       />
-      {tab === 'directory'
-        ? <Directory connections={connections} onConnect={state.reload} />
-        : <Async state={state}>{(list) => <Pipeline connections={list} reload={state.reload} />}</Async>}
+      {tab === 'registered' && <RegisteredInvestors onChanged={network.reload} />}
+      {tab === 'requests' && (
+        <ConnectionsPanel
+          onChanged={network.reload}
+          onOpenMessages={(c) => { setOpenMessage(c.id); go('messages') }}
+          emptyHint="Find an investor in Registered investors and send your first request."
+        />
+      )}
+      {tab === 'messages' && <Messenger initialId={openMessage} />}
+      {tab === 'directory' && <Directory connections={connections} onConnect={state.reload} />}
+      {tab === 'pipeline' && <Async state={state}>{(list) => <Pipeline connections={list} reload={state.reload} />}</Async>}
     </div>
   )
 }

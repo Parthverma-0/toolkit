@@ -21,7 +21,7 @@ module.exports = {
   listMentors: [q, query('verified').optional().isBoolean().toBoolean()],
   verifyMentor: [id, body('isVerified').isBoolean().withMessage('isVerified is required').toBoolean()],
 
-  listUsers: [q, query('role').optional().isIn(ROLES), query('status').optional().isIn(['invited', 'active', 'suspended'])],
+  listUsers: [q, query('role').optional().isIn(ROLES), query('status').optional().isIn(['invited', 'active', 'suspended', 'deactivated'])],
   setUserStatus: [id, body('status').isIn(['active', 'suspended']).withMessage('status must be active or suspended')],
 
   listStartups: [q],

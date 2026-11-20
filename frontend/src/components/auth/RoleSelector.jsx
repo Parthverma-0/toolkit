@@ -1,7 +1,7 @@
-import { Building2, Check, GraduationCap, Rocket } from 'lucide-react'
+import { Building2, Check, GraduationCap, Landmark, Rocket } from 'lucide-react'
 import { ROLES } from '../../constants/roles.js'
 
-const ICONS = { startup: Rocket, incubator: Building2, mentor: GraduationCap }
+const ICONS = { startup: Rocket, incubator: Building2, mentor: GraduationCap, investor: Landmark }
 
 export default function RoleSelector({ value, onChange }) {
   return (

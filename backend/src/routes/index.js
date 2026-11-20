@@ -11,6 +11,8 @@ router.use('/incubators', require('./incubator.routes'));
 router.use('/cohorts', require('./cohort.routes'));
 router.use('/mentoring', require('./mentoring.routes'));
 router.use('/investors', require('./investor.routes'));
+router.use('/investor-portal', require('./investorPortal.routes'));
+router.use('/network', require('./network.routes'));
 router.use('/grants', require('./grant.routes'));
 router.use('/events', require('./event.routes'));
 router.use('/tools', require('./tool.routes'));

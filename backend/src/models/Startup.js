@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const {
   SECTORS, STARTUP_STAGES, CIN_REGEX, DIPP_REGEX,
 } = require('../utils/constants');
+const { BUSINESS_MODELS, REVENUE_PREFERENCES, FUNDING_STATUSES } = require('../utils/investorOptions');
 
 const startupSchema = new mongoose.Schema(
   {
@@ -26,6 +27,19 @@ const startupSchema = new mongoose.Schema(
     teamSize: { type: Number, min: 1 },
     address: { city: String, state: String, country: { type: String, default: 'India' }, pincode: String },
     socialLinks: { linkedin: String, twitter: String, instagram: String },
+
+    // ---- Investor-facing (all optional) ----
+    businessModel: { type: String, enum: BUSINESS_MODELS },
+    revenueStatus: { type: String, enum: REVENUE_PREFERENCES },
+    fundingStatus: { type: String, enum: FUNDING_STATUSES },
+    fundingAsk: { type: Number, min: 0 }, // INR the startup is looking to raise
+    // The founder decides what investors can see. Name, sector, stage, location and the
+    // description are the public part; funding and revenue details are opt-in.
+    investorVisibility: {
+      listed: { type: Boolean, default: true }, // false = hidden from investor discovery
+      showFundingAsk: { type: Boolean, default: true }, // funding requirement + funding status
+      showRevenue: { type: Boolean, default: false }, // revenue status
+    },
 
     founders: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Founder' }],
 

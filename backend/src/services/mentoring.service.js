@@ -1,6 +1,7 @@
-const { MentoringSession, MentorProfile, User } = require('../models');
+const { MentoringSession, MentorProfile, User, Startup } = require('../models');
 const ApiError = require('../utils/ApiError');
 const config = require('../config');
+const { sendEmail } = require('./messaging.service');
 
 const ACTIVE_STATUSES = ['requested', 'confirmed'];
 const MINUTE = 60 * 1000;
@@ -44,6 +45,29 @@ const assertMentorFree = async (mentorId, start, durationMinutes, excludeId) => 
   }
 };
 
+// ---------- Email notifications (best effort: a mail failure never fails the request) ----------
+
+const when = (date) => new Intl.DateTimeFormat('en-IN', {
+  timeZone: config.timezone, dateStyle: 'medium', timeStyle: 'short',
+}).format(date);
+
+const notify = async (to, subject, lines) => {
+  if (!to) return;
+  try {
+    await sendEmail({ to, subject, text: [...lines, '', `Open Toolkit: ${config.clientUrl}/login`].join('\n') });
+  } catch (err) {
+    console.error(`Mentoring email to ${to} failed: ${err.message}`);
+  }
+};
+
+const startupContact = async (session) => {
+  const [startup, requester] = await Promise.all([
+    Startup.findById(session.startup).select('name'),
+    User.findById(session.requestedBy).select('email name'),
+  ]);
+  return { name: startup?.name || 'The startup', email: requester?.email };
+};
+
 const requestSession = async ({ user, startup, body }) => {
   const mentor = await User.findOne({ _id: body.mentor, role: 'mentor', status: 'active' });
   if (!mentor) throw ApiError.notFound('Mentor not found');
@@ -56,7 +80,7 @@ const requestSession = async ({ user, startup, body }) => {
   }
   await assertMentorFree(mentor._id, start, duration);
 
-  return MentoringSession.create({
+  const session = await MentoringSession.create({
     mentor: mentor._id,
     startup: startup._id,
     requestedBy: user._id,
@@ -67,6 +91,13 @@ const requestSession = async ({ user, startup, body }) => {
     mode: body.mode,
     location: body.location,
   });
+  notify(mentor.email, `New mentoring request: ${session.topic}`, [
+    `${startup.name} has requested a ${duration} minute session with you on ${when(start)}.`,
+    `Topic: ${session.topic}`,
+    '',
+    'Confirm or decline it from the Sessions page.',
+  ]);
+  return session;
 };
 
 // ---------- State changes ----------
@@ -86,21 +117,40 @@ const confirm = async (session, user, { meetingLink, location }) => {
   await assertMentorFree(session.mentor, session.scheduledAt, session.durationMinutes, session._id);
 
   session.set({ status: 'confirmed', ...(meetingLink && { meetingLink }), ...(location && { location }) });
-  return session.save();
+  await session.save();
+  const contact = await startupContact(session);
+  notify(contact.email, `Session confirmed: ${session.topic}`, [
+    `Your mentoring session is confirmed for ${when(session.scheduledAt)}.`,
+    session.meetingLink ? `Meeting link: ${session.meetingLink}` : session.location ? `Location: ${session.location}` : '',
+  ].filter(Boolean));
+  return session;
 };
 
 const reject = async (session, user, reason) => {
   if (!isMentorOf(session, user)) throw ApiError.forbidden('Only the mentor can reject');
   assertStatus(session, ['requested'], 'rejected');
   session.set({ status: 'rejected', cancellation: { by: user._id, reason, at: new Date() } });
-  return session.save();
+  await session.save();
+  const contact = await startupContact(session);
+  notify(contact.email, `Session request declined: ${session.topic}`, [
+    `The mentor could not take your request for ${when(session.scheduledAt)}.`,
+    reason ? `Reason: ${reason}` : '',
+  ].filter(Boolean));
+  return session;
 };
 
 const cancel = async (session, user, reason) => {
   if (!isMentorOf(session, user) && !isStartupOf(session, user)) throw ApiError.forbidden();
   assertStatus(session, ACTIVE_STATUSES, 'cancelled');
   session.set({ status: 'cancelled', cancellation: { by: user._id, reason, at: new Date() } });
-  return session.save();
+  await session.save();
+  const byMentor = isMentorOf(session, user);
+  const [contact, mentor] = await Promise.all([startupContact(session), User.findById(session.mentor).select('email')]);
+  notify(byMentor ? contact.email : mentor?.email, `Session cancelled: ${session.topic}`, [
+    `${byMentor ? 'The mentor' : contact.name} cancelled the session planned for ${when(session.scheduledAt)}.`,
+    reason ? `Reason: ${reason}` : '',
+  ].filter(Boolean));
+  return session;
 };
 
 const complete = async (session, user, mentorNotes) => {

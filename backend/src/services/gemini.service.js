@@ -19,8 +19,18 @@ const apiError = (status, body) => {
   if (status === 429 || reason === 'RESOURCE_EXHAUSTED') {
     return ApiError.tooMany('The report service is busy right now. Please try again in a few minutes.').withCode('AI_RATE_LIMITED');
   }
-  if (status === 400 && /api key/i.test(body?.error?.message || '')) return notConfigured();
-  if (status === 401 || status === 403) return notConfigured();
+  const message = body?.error?.message || '';
+  // Key is valid but its Google project has no free tier and no billing
+  if (/billing|free tier/i.test(message)) {
+    return new ApiError(503, 'Report generation is unavailable: the AI provider account needs billing enabled (free tier not available for this API key).')
+      .withCode('AI_BILLING_REQUIRED');
+  }
+  if (status === 400 && /api key/i.test(message)) {
+    return new ApiError(503, 'Report generation is unavailable: the AI API key is invalid.').withCode('AI_KEY_INVALID');
+  }
+  if (status === 401 || status === 403) {
+    return new ApiError(503, 'Report generation is unavailable: the AI API key was rejected.').withCode('AI_KEY_REJECTED');
+  }
   return new ApiError(502, 'The report could not be generated. Please try again.').withCode('AI_FAILED');
 };
 

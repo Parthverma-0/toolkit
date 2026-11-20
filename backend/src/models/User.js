@@ -35,7 +35,8 @@ const userSchema = new mongoose.Schema(
     },
 
     // invited = incubator seat created by the head, not signed in yet
-    status: { type: String, enum: ['invited', 'active', 'suspended'], default: 'active' },
+    // deactivated = the user closed their own account; signing in again reactivates it (suspended is admin-only)
+    status: { type: String, enum: ['invited', 'active', 'suspended', 'deactivated'], default: 'active' },
     // Bumped to revoke every refresh token (logout from all devices)
     tokenVersion: { type: Number, default: 0, select: false },
     lastLoginAt: Date,

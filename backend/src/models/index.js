@@ -23,6 +23,14 @@ module.exports = {
   Event: require('./Event'),
   EventRegistration: require('./EventRegistration'),
 
+  // Investor role (registered investors, their connections with startups)
+  InvestorProfile: require('./InvestorProfile'),
+  InvestorShortlist: require('./InvestorShortlist'),
+  NetworkConnection: require('./NetworkConnection'),
+  ConnectionMessage: require('./ConnectionMessage'),
+  Notification: require('./Notification'),
+  ProfileReport: require('./ProfileReport'),
+
   // Incubator
   Incubator: require('./Incubator'),
   Program: require('./Program'),

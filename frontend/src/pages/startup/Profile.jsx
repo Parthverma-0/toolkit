@@ -5,6 +5,7 @@ import { LoadError, Loading } from '../../components/dashboard/Async.jsx'
 import OtpField from '../../components/onboarding/OtpField.jsx'
 import LogoUpload from '../../components/onboarding/LogoUpload.jsx'
 import { useStartupProfile } from '../../components/startup/StartupProfile.jsx'
+import InvestorSettings from '../../components/startup/InvestorSettings.jsx'
 import { ErrorText, Field, Pills, Select, Textarea, TextInput } from '../../components/ui/Field.jsx'
 import {
   EMAIL_REGEX, SECTORS, STAGES, cinError, cleanCin, cleanDipp, dippError, normalizePhone, startupNameError,
@@ -193,6 +194,8 @@ function ProfileView({ startup, reload }) {
           <p className="mt-4 text-xs text-ink-soft">Founders hold {totalEquity}% equity in total.</p>
         </Card>
       </div>
+
+      <InvestorSettings startup={startup} reload={reload} />
 
       <Drawer
         open={Boolean(p)} title="Edit startup details" onClose={closeDrawers}

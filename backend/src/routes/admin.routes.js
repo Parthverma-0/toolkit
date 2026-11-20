@@ -28,6 +28,8 @@ router.route('/grants/:id')
   .patch(v.updateGrant, validate, admin.updateGrant)
   .delete(v.id, validate, admin.deleteGrant);
 
+router.use('/investor-network', require('./adminInvestor.routes'));
+
 router.patch('/investors/:id', v.setInvestorActive, validate, admin.setInvestorActive);
 
 module.exports = router;

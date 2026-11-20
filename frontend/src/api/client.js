@@ -35,35 +35,83 @@ export const isProfileRequired = (err) => err?.response?.data?.code === 'PROFILE
 // With local disk storage the backend answers direct:false and files travel with the form.
 let directUploads = true
 
-const uploadDirect = async (file) => {
+const CHUNK_AT = 20 * 1024 * 1024 // larger files go up in 20 MB pieces (Cloudinary rejects big single requests)
+
+const uploadError = (file, detail) => Object.assign(new Error('Upload failed'), {
+  // Same shape as an API error so errorMessage() can show it
+  response: { data: { message: `Couldn't upload ${file.name}${detail ? `: ${detail}` : '. Please check your connection and try again.'}` } },
+})
+
+// XHR (not fetch) because it reports upload progress. Resolves { status, json }; network errors reject.
+const sendToCloud = (url, body, headers, onBytes) => new Promise((resolve, reject) => {
+  const xhr = new XMLHttpRequest()
+  xhr.open('POST', url)
+  Object.entries(headers).forEach(([k, v]) => xhr.setRequestHeader(k, v))
+  xhr.upload.onprogress = (e) => e.lengthComputable && onBytes(e.loaded)
+  xhr.onerror = () => reject(new Error('network'))
+  xhr.ontimeout = xhr.onerror
+  xhr.onload = () => {
+    let json = null
+    try { json = JSON.parse(xhr.responseText) } catch { /* not JSON */ }
+    resolve({ status: xhr.status, json })
+  }
+  xhr.send(body)
+})
+
+// Uploads one file to Cloudinary (in chunks when large). onBytes(totalBytesSentSoFar) drives the progress bar.
+const sendFile = async (file, ticket, onBytes) => {
+  const form = (blob) => {
+    const body = new FormData()
+    Object.entries(ticket.fields).forEach(([key, value]) => body.append(key, value))
+    body.append('file', blob, file.name)
+    return body
+  }
+  if (file.size <= CHUNK_AT) return sendToCloud(ticket.uploadUrl, form(file), {}, onBytes)
+
+  const uploadId = `${Date.now()}${Math.random().toString(16).slice(2)}`
+  let last = null
+  for (let start = 0; start < file.size; start += CHUNK_AT) {
+    const end = Math.min(start + CHUNK_AT, file.size)
+    last = await sendToCloud(
+      ticket.uploadUrl, form(file.slice(start, end)),
+      { 'X-Unique-Upload-Id': uploadId, 'Content-Range': `bytes ${start}-${end - 1}/${file.size}` },
+      (loaded) => onBytes(start + Math.min(loaded, end - start)),
+    )
+    if (last.status >= 400) break
+  }
+  return last
+}
+
+const uploadDirect = async (file, onBytes) => {
   if (!directUploads) return null
   const { data: { data: ticket } } = await api.post('/uploads/sign', { mimetype: file.type })
   if (!ticket.direct) {
     directUploads = false
     return null
   }
-  const body = new FormData()
-  Object.entries(ticket.fields).forEach(([key, value]) => body.append(key, value))
-  body.append('file', file)
-  const res = await fetch(ticket.uploadUrl, { method: 'POST', body }).catch(() => null)
-  const json = await res?.json().catch(() => null)
-  if (!res?.ok || !json?.secure_url) {
-    // Same shape as an API error so errorMessage() can show it
-    throw Object.assign(new Error('Upload failed'), {
-      response: { data: { message: `Couldn't upload ${file.name}${json?.error?.message ? `: ${json.error.message}` : '. Please try again.'}` } },
-    })
+  let res = null
+  try {
+    res = await sendFile(file, ticket, onBytes)
+  } catch {
+    throw uploadError(file)
   }
-  return { url: json.secure_url, proof: ticket.proof, name: file.name, size: file.size }
+  if (!res || res.status >= 400 || !res.json?.secure_url) throw uploadError(file, res?.json?.error?.message)
+  return { url: res.json.secure_url, proof: ticket.proof, name: file.name, size: file.size }
 }
 
 api.interceptors.request.use(async (config) => {
   if (config._direct || !(config.data instanceof FormData)) return config
   const entries = [...config.data.entries()]
+  const files = entries.filter(([, value]) => value instanceof File).map(([, value]) => value)
+  const total = files.reduce((sum, f) => sum + f.size, 0) || 1
+  let finished = 0
   const refs = []
   for (const [field, value] of entries) {
     if (!(value instanceof File)) continue
-    const ref = await uploadDirect(value)
+    // config._onProgress(0..1) is optional; pass it as the `options` argument of post() / patch()
+    const ref = await uploadDirect(value, (sent) => config._onProgress?.(Math.min((finished + sent) / total, 1)))
     if (!ref) return config // backend keeps files itself: send the form untouched
+    finished += value.size
     refs.push({ field, ...ref })
   }
   if (!refs.length) return config
@@ -100,7 +148,7 @@ api.interceptors.response.use(
 // Human-readable message from an API error ({ success:false, message, details? })
 export const errorMessage = (err, fallback = 'Something went wrong. Please try again.') => {
   const data = err?.response?.data
-  if (isProfileRequired(err)) return 'Complete your startup profile to continue.'
+  if (isProfileRequired(err)) return data?.message || 'Complete your profile to continue.'
   if (data?.details?.length) return data.details.map((d) => d.message).join('. ')
   if (data?.message) return data.message
   if (err?.code === 'ERR_NETWORK') return "Can't reach the server. Is the backend running?"
@@ -128,9 +176,10 @@ export const toFormData = (values) => {
 
 // Unwraps { success, data } responses
 export const get = (url, params) => api.get(url, { params }).then((r) => r.data)
-export const post = (url, body) => api.post(url, body).then((r) => r.data)
-export const put = (url, body) => api.put(url, body).then((r) => r.data)
-export const patch = (url, body) => api.patch(url, body).then((r) => r.data)
+// options: { _onProgress(fraction) } reports file upload progress (0..1) for forms that carry files
+export const post = (url, body, options) => api.post(url, body, options).then((r) => r.data)
+export const put = (url, body, options) => api.put(url, body, options).then((r) => r.data)
+export const patch = (url, body, options) => api.patch(url, body, options).then((r) => r.data)
 export const del = (url) => api.delete(url).then((r) => r.data)
 
 // Absolute URL for files the backend returns as /uploads/... (cloud URLs pass through)

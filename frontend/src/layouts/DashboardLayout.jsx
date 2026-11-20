@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { Building2, GraduationCap, LogOut, Menu, X } from 'lucide-react'
+import { Building2, GraduationCap, Landmark, LogOut, Menu, ShieldCheck, X } from 'lucide-react'
 import Wordmark from '../components/Wordmark.jsx'
 import { ToastProvider } from '../components/dashboard/ui.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { get } from '../api/client.js'
 import useApi from '../hooks/useApi.js'
 import { useStartupProfile } from '../components/startup/StartupProfile.jsx'
+import { useInvestor } from '../components/investor/InvestorContext.jsx'
 
 // Shared shell for every role's dashboard: 248px light sidebar with icon nav on desktop,
 // slide-over drawer on mobile. `nav` is [{ to, label, icon, end? }].
@@ -18,9 +19,10 @@ export default function DashboardLayout({ nav, roleLabel, orgUrl }) {
   const org = useApi(() => (orgUrl ? get(orgUrl).then((r) => r.data) : Promise.resolve(null)), [orgUrl])
   // Startup area: always the startup's name (from the shared profile), never the person or an email
   const startupProfile = useStartupProfile()
+  const investor = useInvestor() // only inside the investor area
   const accountName = startupProfile
     ? (startupProfile.startup?.name || (startupProfile.loading ? '' : 'Your startup'))
-    : org.data?.name || user?.name
+    : investor?.profile ? (investor.profile.organisationName || investor.profile.fullName) : org.data?.name || user?.name
   const roleText = user?.role === 'incubator' ? `Incubator ${user.incubatorRole === 'head' ? 'head' : 'member'}` : roleLabel
 
   const handleSignOut = async () => {
@@ -36,7 +38,7 @@ export default function DashboardLayout({ nav, roleLabel, orgUrl }) {
     setOpen(false)
   }
 
-  const AccountIcon = roleLabel === 'Mentor' ? GraduationCap : Building2
+  const AccountIcon = { Mentor: GraduationCap, Investor: Landmark, Admin: ShieldCheck }[roleLabel] ?? Building2
 
   const sidebar = (
     <nav className="flex h-full flex-col">
@@ -69,6 +71,9 @@ export default function DashboardLayout({ nav, roleLabel, orgUrl }) {
             <p className="truncate text-base font-bold text-ink">{accountName}</p>
             {startupProfile && !startupProfile.loading && !startupProfile.complete ? (
               <button type="button" onClick={() => startupProfile.openProfileForm('action')}
+                className="text-sm font-semibold text-brand hover:text-brand-dark">Complete profile</button>
+            ) : investor && !investor.complete ? (
+              <button type="button" onClick={() => investor.openProfileForm('action')}
                 className="text-sm font-semibold text-brand hover:text-brand-dark">Complete profile</button>
             ) : (
               <p className="text-sm text-ink-soft">{roleText}</p>

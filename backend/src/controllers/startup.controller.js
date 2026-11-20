@@ -10,6 +10,7 @@ const {
 const STARTUP_FIELDS = [
   'name', 'startupEmail', 'cin', 'dippNumber', 'sector', 'stage', 'problemStatement', 'solution',
   'tagline', 'website', 'foundedOn', 'teamSize', 'address', 'socialLinks',
+  'businessModel', 'revenueStatus', 'fundingStatus', 'fundingAsk', 'investorVisibility',
 ];
 // Locked once the platform has verified the startup
 const LEGAL_FIELDS = ['cin', 'dippNumber'];
@@ -61,7 +62,7 @@ const updateMyStartup = asyncHandler(async (req, res) => {
   const oldLogo = startup.logo;
   if (logo) updates.logo = toPublicUrl(logo);
 
-  applyUpdates(startup, updates, ['address', 'socialLinks']);
+  applyUpdates(startup, updates, ['address', 'socialLinks', 'investorVisibility']);
   await startup.save();
   if (logo && oldLogo) await removeFile(oldLogo);
 

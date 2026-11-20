@@ -30,7 +30,17 @@ import MentorSessions from './pages/mentor/MentorSessions.jsx'
 import MentorVideos from './pages/mentor/MentorVideos.jsx'
 import MentorEvents from './pages/mentor/MentorEvents.jsx'
 import MentorProfile from './pages/mentor/MentorProfile.jsx'
-import { INCUBATOR_NAV, MENTOR_NAV, STARTUP_NAV } from './constants/nav.js'
+import InvestorHome from './pages/investor/InvestorHome.jsx'
+import Discover from './pages/investor/Discover.jsx'
+import Shortlist from './pages/investor/Shortlist.jsx'
+import Connections from './pages/investor/Connections.jsx'
+import Messages from './pages/investor/Messages.jsx'
+import Notifications from './pages/investor/Notifications.jsx'
+import InvestorProfile from './pages/investor/InvestorProfile.jsx'
+import InvestorSettings from './pages/investor/Settings.jsx'
+import AdminInvestors from './pages/admin/AdminInvestors.jsx'
+import { ADMIN_NAV, INCUBATOR_NAV, INVESTOR_NAV, MENTOR_NAV, STARTUP_NAV } from './constants/nav.js'
+import { InvestorProvider } from './components/investor/InvestorContext.jsx'
 import RequireAuth, { GuestOnly } from './components/RequireAuth.jsx'
 import { StartupProfileProvider } from './components/startup/StartupProfile.jsx'
 
@@ -45,6 +55,7 @@ export default function App() {
       <Route path="/onboarding/startup" element={<Navigate to="/startup" replace />} />
       <Route path="/onboarding/incubator" element={<RequireAuth role="incubator" onboarding><IncubatorOnboarding /></RequireAuth>} />
       <Route path="/onboarding/mentor" element={<RequireAuth role="mentor" onboarding><MentorOnboarding /></RequireAuth>} />
+
 
       <Route path="/startup" element={<RequireAuth role="startup"><StartupProfileProvider><DashboardLayout nav={STARTUP_NAV} roleLabel="Startup" /></StartupProfileProvider></RequireAuth>}>
         <Route index element={<StartupHome />} />
@@ -84,6 +95,23 @@ export default function App() {
         <Route path="events" element={<MentorEvents />} />
         <Route path="profile" element={<MentorProfile />} />
         <Route path="*" element={<Navigate to="/mentor" replace />} />
+      </Route>
+
+      <Route path="/investor" element={<RequireAuth role="investor"><InvestorProvider><DashboardLayout nav={INVESTOR_NAV} roleLabel="Investor" /></InvestorProvider></RequireAuth>}>
+        <Route index element={<InvestorHome />} />
+        <Route path="discover" element={<Discover />} />
+        <Route path="shortlist" element={<Shortlist />} />
+        <Route path="connections" element={<Connections />} />
+        <Route path="messages" element={<Messages />} />
+        <Route path="notifications" element={<Notifications />} />
+        <Route path="profile" element={<InvestorProfile />} />
+        <Route path="settings" element={<InvestorSettings />} />
+        <Route path="*" element={<Navigate to="/investor" replace />} />
+      </Route>
+
+      <Route path="/admin" element={<RequireAuth role="admin"><DashboardLayout nav={ADMIN_NAV} roleLabel="Admin" /></RequireAuth>}>
+        <Route index element={<AdminInvestors />} />
+        <Route path="*" element={<Navigate to="/admin" replace />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/login" replace />} />

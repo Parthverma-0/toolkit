@@ -17,6 +17,9 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
+// Investor verification documents are private: never served statically, only through the
+// authenticated document routes (owner and admins).
+app.use('/uploads/investor-docs', (req, res) => res.status(404).json({ success: false, message: 'Not found' }));
 app.use('/uploads', express.static(UPLOAD_ROOT, { maxAge: '7d' }));
 app.use('/api', routes);
 

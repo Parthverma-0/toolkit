@@ -1,6 +1,6 @@
 import {
-  Award, CalendarDays, FileText, GraduationCap, Sprout, House, Layers, LayoutGrid, Mail,
-  MessagesSquare, Rocket, SquarePlay, User, Users, UsersRound, Wallet,
+  Award, Bell, Bookmark, CalendarDays, FileText, GraduationCap, Sprout, House, Layers, LayoutGrid, Link2, Mail,
+  MessagesSquare, Rocket, Search, Settings, ShieldCheck, SquarePlay, User, Users, UsersRound, Wallet,
 } from 'lucide-react'
 
 // Sidebar navigation per role. Paths are relative to the role's dashboard root.
@@ -34,4 +34,19 @@ export const MENTOR_NAV = [
   { to: '/mentor/videos', label: 'Videos', icon: SquarePlay },
   { to: '/mentor/events', label: 'Events', icon: CalendarDays },
   { to: '/mentor/profile', label: 'Profile', icon: User },
+]
+
+export const INVESTOR_NAV = [
+  { to: '/investor', label: 'Home', icon: House, end: true },
+  { to: '/investor/discover', label: 'Discover', icon: Search },
+  { to: '/investor/shortlist', label: 'Shortlist', icon: Bookmark },
+  { to: '/investor/connections', label: 'Connections', icon: Link2 },
+  { to: '/investor/messages', label: 'Messages', icon: MessagesSquare },
+  { to: '/investor/notifications', label: 'Notifications', icon: Bell },
+  { to: '/investor/profile', label: 'Profile', icon: User },
+  { to: '/investor/settings', label: 'Settings', icon: Settings },
+]
+
+export const ADMIN_NAV = [
+  { to: '/admin', label: 'Investors', icon: ShieldCheck, end: true },
 ]

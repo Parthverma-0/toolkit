@@ -91,7 +91,7 @@ export default function MentorOnboarding() {
       >
         {done ? (
           <SuccessPanel title="Your mentor profile is live" to="/mentor" cta="Go to dashboard">
-            Founders can now request sessions with you. You will get an email for every new request.
+            Founders can now request sessions with you. You will get an email for every new session request.
           </SuccessPanel>
         ) : (
           <>

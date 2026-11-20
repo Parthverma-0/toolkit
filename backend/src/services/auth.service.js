@@ -4,7 +4,7 @@ const { SELF_SIGNUP_ROLES } = require('../utils/constants');
 const { trackForUser } = require('./funnel.service');
 
 const roleLabel = (role) => ({
-  mentor: 'a mentor', startup: 'a startup', incubator: 'an incubator', admin: 'an admin',
+  mentor: 'a mentor', startup: 'a startup', incubator: 'an incubator', investor: 'an investor', admin: 'an admin',
 }[role]);
 
 // Google sign-in / sign-up with role selection.
@@ -32,6 +32,9 @@ const signInWithGoogle = async (googleProfile, { role, acquisition, intent } = {
     if (existing.status === 'suspended') {
       throw ApiError.forbidden('Your account has been suspended. Contact support.').withCode('ACCOUNT_SUSPENDED');
     }
+
+    // Someone who closed their own account gets it back by signing in again
+    if (existing.status === 'deactivated') existing.status = 'active';
 
     // First sign-in of an invited incubator seat (or a pre-created admin) activates it
     if (existing.status === 'invited') {
@@ -77,7 +80,7 @@ const signInWithGoogle = async (googleProfile, { role, acquisition, intent } = {
 };
 
 // Whether the user still has to finish their role's onboarding (frontend routes on this).
-// Startups go straight to the dashboard; the profile is asked for when they first use a tool.
+// Startups and investors go straight to the dashboard; the profile is asked for when they first take an action.
 const needsOnboarding = async (user) => {
   switch (user.role) {
     case 'startup': return false;

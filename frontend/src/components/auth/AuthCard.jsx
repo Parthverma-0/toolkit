@@ -32,9 +32,11 @@ const COPY = {
 export default function AuthCard({ mode }) {
   const copy = COPY[mode]
   const [params, setParams] = useSearchParams()
+  // /login?as=admin: platform admins have no role card, they just sign in with Google
+  const adminMode = mode === 'login' && params.get('as') === 'admin'
   const role = isRole(params.get('role')) ? params.get('role') : DEFAULT_ROLE
   const selected = ROLES.find((r) => r.id === role)
-  const hint = mode === 'signup' ? selected.signupHint : selected.loginHint
+  const hint = adminMode ? null : mode === 'signup' ? selected.signupHint : selected.loginHint
 
   const [loading, setLoading] = useState(false)
   const [notice, setNotice] = useState(null) // { text, switchTo? }
@@ -52,11 +54,7 @@ export default function AuthCard({ mode }) {
     setLoading(true)
     setNotice(null)
     try {
-      const session = await signIn({ credential, intent: mode, role })
-      if (session.user.role === 'admin') {
-        setNotice({ text: 'Admin accounts use the admin console, which is not built yet.' })
-        return
-      }
+      const session = await signIn({ credential, intent: mode, role: adminMode ? undefined : role })
       navigate(landingFor(session), { replace: true })
     } catch (err) {
       const code = err?.response?.data?.code
@@ -74,14 +72,18 @@ export default function AuthCard({ mode }) {
       <div className="mb-6">
         <p className="mb-6 text-center lg:hidden"><Wordmark size="md" /></p>
         <span aria-hidden="true" className="mb-4 block h-1 w-12 rounded-full bg-brand" />
-        <h1 className="font-display text-3xl leading-tight font-extrabold tracking-tight text-ink">{copy.title}</h1>
-        <p className="mt-1.5 text-sm text-ink-soft">{copy.subtitle}</p>
+        <h1 className="font-display text-3xl leading-tight font-extrabold tracking-tight text-ink">{adminMode ? 'Admin sign in' : copy.title}</h1>
+        <p className="mt-1.5 text-sm text-ink-soft">{adminMode ? 'For Toolkit platform administrators.' : copy.subtitle}</p>
       </div>
 
-      <p className="mb-2.5 text-xs font-semibold tracking-wider text-brand uppercase">
-        {mode === 'login' ? 'Sign in as' : 'I am a'}
-      </p>
-      <RoleSelector value={role} onChange={setRole} />
+      {!adminMode && (
+        <>
+          <p className="mb-2.5 text-xs font-semibold tracking-wider text-brand uppercase">
+            {mode === 'login' ? 'Sign in as' : 'I am a'}
+          </p>
+          <RoleSelector value={role} onChange={setRole} />
+        </>
+      )}
 
       {hint && (
         <p className="mt-3 rounded-lg border-l-2 border-brand bg-brand-soft/80 px-3 py-2 text-xs leading-relaxed text-ink-soft">
@@ -112,6 +114,14 @@ export default function AuthCard({ mode }) {
       {mode === 'signup' && (
         <p className="mt-4 text-center text-[11px] leading-relaxed text-ink-soft">
           By continuing you agree to Toolkit&apos;s Terms of Service and Privacy Policy.
+        </p>
+      )}
+
+      {mode === 'login' && (
+        <p className="mt-4 text-center text-xs text-ink-soft">
+          {adminMode
+            ? <Link to="/login" className="font-semibold text-brand hover:underline">Back to role sign in</Link>
+            : <Link to="/login?as=admin" className="font-semibold text-brand hover:underline">Platform admin? Sign in here</Link>}
         </p>
       )}
 

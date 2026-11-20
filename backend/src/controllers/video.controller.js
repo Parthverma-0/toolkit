@@ -3,6 +3,7 @@ const ApiError = require('../utils/ApiError');
 const asyncHandler = require('../utils/asyncHandler');
 const { pick } = require('../utils/object');
 const { getPagination, paginationMeta } = require('../utils/pagination');
+const { forViewer } = require('../utils/videoEmbed');
 const { toPublicUrl, removeFile } = require('../services/storage.service');
 
 const EDITABLE_FIELDS = ['title', 'description', 'category', 'tags', 'status', 'durationSeconds', 'resources'];
@@ -60,7 +61,7 @@ const listVideos = asyncHandler(async (req, res) => {
     Video.countDocuments(filter),
   ]);
 
-  res.json({ success: true, data: items, pagination: paginationMeta(pagination, total) });
+  res.json({ success: true, data: items.map(forViewer), pagination: paginationMeta(pagination, total) });
 });
 
 // GET /api/videos/mine?status=  (mentor's own videos, every status)
@@ -91,7 +92,7 @@ const getVideo = asyncHandler(async (req, res) => {
   }
   const likedByMe = Boolean(await Video.exists({ _id: video._id, likes: req.user._id }));
 
-  res.json({ success: true, data: { ...video.toObject(), likedByMe } });
+  res.json({ success: true, data: { ...(owner ? video.toObject() : forViewer(video)), likedByMe } });
 });
 
 // PATCH /api/videos/:id  (owner; can replace video file / thumbnail)

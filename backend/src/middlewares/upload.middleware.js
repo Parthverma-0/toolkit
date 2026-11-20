@@ -122,11 +122,25 @@ const complianceFileUpload = makeUploader({ fieldKinds: { file: 'document' }, fo
 
 const eventBannerUpload = makeUploader({ fieldKinds: { banner: 'image' }, folders: { banner: 'events' }, maxSizeMb: 5 });
 
+const investorProfileUpload = makeUploader({
+  fieldKinds: { photo: 'image', organisationLogo: 'image' },
+  folders: { photo: 'investors', organisationLogo: 'investors' },
+  maxSizeMb: 5,
+});
+
+// Verification documents. The `investor-docs` folder is never served statically (see app.js);
+// files are only reachable through the authenticated document routes.
+const investorDocumentUpload = makeUploader({
+  fieldKinds: { file: 'receipt' }, folders: { file: 'investor-docs' }, maxSizeMb: 10,
+});
+
 module.exports = {
   makeUploader,
   grantDocumentsUpload,
   fundingDocumentsUpload,
   eventBannerUpload,
+  investorProfileUpload,
+  investorDocumentUpload,
   financialAttachmentsUpload,
   complianceFileUpload,
   agreementFormatUpload,

@@ -3,6 +3,7 @@ const {
   SECTORS, STARTUP_STAGES, CIN_REGEX, DIPP_REGEX,
 } = require('../utils/constants');
 const { toJson } = require('../utils/multipart');
+const { BUSINESS_MODELS, REVENUE_PREFERENCES, FUNDING_STATUSES } = require('../utils/investorOptions');
 const { normalizePhone } = require('../utils/phone');
 
 const notInFuture = (value) => {
@@ -49,6 +50,14 @@ const startupFields = (isCreate) => {
     body('address.pincode').optional().matches(/^\d{6}$/).withMessage('pincode must be 6 digits'),
     body('socialLinks').optional().customSanitizer(toJson).custom(isPlainObject).withMessage('socialLinks must be an object'),
     body(['socialLinks.linkedin', 'socialLinks.twitter', 'socialLinks.instagram']).optional({ values: 'falsy' }).isURL(),
+
+    // Investor-facing details; '' clears nothing (empty values are ignored by the controller)
+    body('businessModel').optional({ values: 'falsy' }).isIn(BUSINESS_MODELS),
+    body('revenueStatus').optional({ values: 'falsy' }).isIn(REVENUE_PREFERENCES),
+    body('fundingStatus').optional({ values: 'falsy' }).isIn(FUNDING_STATUSES),
+    body('fundingAsk').optional({ values: 'falsy' }).isFloat({ min: 0 }).withMessage('Funding requirement must be a positive amount').toFloat(),
+    body('investorVisibility').optional().customSanitizer(toJson).custom(isPlainObject).withMessage('investorVisibility must be an object'),
+    body(['investorVisibility.listed', 'investorVisibility.showFundingAsk', 'investorVisibility.showRevenue']).optional().isBoolean().toBoolean(),
   ];
 };
 

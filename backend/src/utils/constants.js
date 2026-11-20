@@ -1,9 +1,9 @@
 // Shared enums used across models (and later validators / frontend dropdowns)
 
-const ROLES = ['mentor', 'startup', 'incubator', 'admin'];
+const ROLES = ['mentor', 'startup', 'incubator', 'investor', 'admin'];
 
 // Roles a person can pick on the signup screen (admins are created with scripts/createAdmin.js)
-const SELF_SIGNUP_ROLES = ['mentor', 'startup', 'incubator'];
+const SELF_SIGNUP_ROLES = ['mentor', 'startup', 'incubator', 'investor'];
 
 const INCUBATOR_MEMBER_ROLES = ['head', 'member'];
 

@@ -31,6 +31,6 @@ export default function RequireAuth({ role, onboarding = false, children }) {
 export function GuestOnly({ children }) {
   const auth = useAuth()
   if (auth.status === 'loading') return <FullPageSpinner />
-  if (auth.user && auth.user.role !== 'admin') return <Navigate to={landingFor(auth)} replace />
+  if (auth.user) return <Navigate to={landingFor(auth)} replace />
   return children ?? <Outlet />
 }
